@@ -54,7 +54,9 @@ def load_model(model, path, device):
         model (torch.module): The model to load the weights into.
         path (str): The path from which to load the model weights.
         device (torch.device): The device the model weights should be on.
+    Returns:
+        The model (note that this is the same object as the passed model).
     """
-    checkpoint = torch.load(path)
-    model.load_state_dict(checkpoint["model_state_dict"], map_location=device)
+    state_dict = torch.load(path, map_location=device)
+    model.load_state_dict(state_dict)
     return model
