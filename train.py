@@ -49,7 +49,7 @@ def train(max_iter, device="cpu"):
 
     # run name (to easily identify model later)
     time_string = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-    run_name = wandb.config.run_name = "det_{}".format(time_string)
+    run_name = wandb.config.run_name = "saved_models/det_{}".format(time_string)
 
     # init optimizer
     optimizer = torch.optim.Adam(detector.parameters(), lr=learning_rate)
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     device = parser.add_mutually_exclusive_group(required=True)
     device.add_argument("--cpu", dest="device", action="store_const", const="cpu")
     device.add_argument("--gpu", dest="device", action="store_const", const="cuda")
-    parser.add_argument('MAX_ITER', default=3000)
+    parser.add_argument("MAX_ITER", default=3000)
     args = parser.parse_args()
 
     train(int(args.MAX_ITER), args.device)
