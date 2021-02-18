@@ -17,10 +17,9 @@ import utils
 from detector import Detector
 
 NUM_CATEGORIES = 15
-MAX_ITER = 3000
 
 
-def train(device="cpu"):
+def train(max_iter, device="cpu"):
     """Train the network.
 
     Args:
@@ -42,7 +41,8 @@ def train(device="cpu"):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True)
 
     # training params
-    max_iterations = wandb.config.max_iterations = MAX_ITER
+    max_iterations = wandb.config.max_iterations = max_iter
+
     learning_rate = wandb.config.learning_rate = 1e-4
     weight_reg = wandb.config.weight_reg = 1
     weight_noobj = wandb.config.weight_noobj = 1
@@ -165,5 +165,7 @@ if __name__ == "__main__":
     device = parser.add_mutually_exclusive_group(required=True)
     device.add_argument("--cpu", dest="device", action="store_const", const="cpu")
     device.add_argument("--gpu", dest="device", action="store_const", const="cuda")
+    parser.add_argument('MAX_ITER', default=3000)
     args = parser.parse_args()
-    train(args.device)
+
+    train(int(args.MAX_ITER), args.device)
