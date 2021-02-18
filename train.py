@@ -17,6 +17,7 @@ import utils
 from detector import Detector
 
 NUM_CATEGORIES = 15
+MAX_ITER = 3000
 
 
 def train(device="cpu"):
@@ -41,7 +42,7 @@ def train(device="cpu"):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True)
 
     # training params
-    max_iterations = wandb.config.max_iterations = 10000
+    max_iterations = wandb.config.max_iterations = MAX_ITER
     learning_rate = wandb.config.learning_rate = 1e-4
     weight_reg = wandb.config.weight_reg = 1
     weight_noobj = wandb.config.weight_noobj = 1
