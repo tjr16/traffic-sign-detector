@@ -155,7 +155,9 @@ def train(max_iter, device="cpu"):
 
     model_path = "{}.pt".format(run_name)
     utils.save_model(detector, model_path)
-    wandb.save(model_path)
+
+    if device == "cpu":
+        wandb.save(model_path)
 
     print("Model weights saved at {}".format(model_path))
 
