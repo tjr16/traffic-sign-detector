@@ -12,18 +12,20 @@ from torchvision import transforms
 class Detector(nn.Module):
     """Baseline module for object detection."""
 
-    def __init__(self):
+    def __init__(self, num_categories=15):
         """Create the module.
 
         Define all trainable layers.
         """
         super(Detector, self).__init__()
 
+        self.num_categories = num_categories
+
         self.features = models.mobilenet_v2(pretrained=True).features
         # output of mobilenet_v2 will be 1280x15x20 for 480x640 input images
 
         self.head = nn.Conv2d(
-            in_channels=1280, out_channels=5, kernel_size=1
+            in_channels=1280, out_channels=5+self.num_categories, kernel_size=1
         )
         # 1x1 Convolution to reduce channels to out_channels without changing H and W
 
@@ -58,6 +60,7 @@ class Detector(nn.Module):
                     C = channel size
                     H = image height
                     W = image width
+                eg. torch.Size([8, 20, 15, 20])
             threshold (float):
                 The threshold above which a bounding box will be accepted.
         Returns:
@@ -68,19 +71,21 @@ class Detector(nn.Module):
                 - "y": Top-left corner row
                 - "width": Width of bounding box in pixel
                 - "height": Height of bounding box in pixel
-                - "category": Category (not implemented yet!)
+                - "category": Category
         """
         bbs = []
         # decode bounding boxes for each image
-        for o in out:
+        for o in out:   # C x H x W
             img_bbs = []
 
             # find cells with bounding box center
             bb_indices = torch.nonzero(o[4, :, :] >= threshold)
+            # n x 2, representing n ce;;s
 
             # loop over all cells with bounding box center
             for bb_index in bb_indices:
                 bb_coeffs = o[0:4, bb_index[0], bb_index[1]]
+                bb_cate = o[5:, bb_index[0], bb_index[1]]
 
                 # decode bounding box size and position
                 width = self.img_width * bb_coeffs[2]
@@ -93,6 +98,7 @@ class Detector(nn.Module):
                     self.img_width / self.out_cells_x * (bb_index[1] + bb_coeffs[0])
                     - width / 2.0
                 )
+                category = torch.argmax(bb_cate, dim=0)
 
                 img_bbs.append(
                     {
@@ -100,6 +106,7 @@ class Detector(nn.Module):
                         "height": height,
                         "x": x,
                         "y": y,
+                        "category": category
                     }
                 )
             bbs.append(img_bbs)
@@ -133,12 +140,13 @@ class Detector(nn.Module):
 
         # If there is no bb, the first 4 channels will not influence the loss
         # -> can be any number (will be kept at 0 zero)
-        target = torch.zeros(5, 15, 20)
+        target = torch.zeros(5+self.num_categories, 15, 20)
         for ann in anns:
             x = ann["bbox"][0]
             y = ann["bbox"][1]
             width = ann["bbox"][2]
             height = ann["bbox"][3]
+            category = ann["category_id"]
 
             x_center = x + width / 2.0
             y_center = y + height / 2.0
@@ -159,5 +167,8 @@ class Detector(nn.Module):
             target[1, y_ind, x_ind] = y_cell_pos
             target[2, y_ind, x_ind] = rel_width
             target[3, y_ind, x_ind] = rel_height
+
+            # categories
+            target[5+category, y_ind, x_ind] = 1
 
         return image, target

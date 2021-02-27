@@ -25,10 +25,12 @@ def train(max_iter, device="cpu"):
     Args:
         device: The device to train on."""
 
+    global NUM_CATEGORIES
+
     wandb.init(project="detector_baseline")
 
     # Init model
-    detector = Detector().to(device)
+    detector = Detector(NUM_CATEGORIES).to(device)
 
     wandb.watch(detector)
 
@@ -77,31 +79,42 @@ def train(max_iter, device="cpu"):
     current_iteration = 1
     while current_iteration <= max_iterations:
         for img_batch, target_batch in dataloader:
-            img_batch = img_batch.to(device)
-            target_batch = target_batch.to(device)
+            img_batch = img_batch.to(device)    # torch.Size([8, 3, 480, 640])
+            target_batch = target_batch.to(device)  # Batch, 5+category, 15, 20
 
             # run network
-            out = detector(img_batch)
+            out = detector(img_batch)   # torch.Size([8, 5+category, 15, 20])
 
             # positive / negative indices
             # (this could be passed from input_transform to avoid recomputation)
+            # check tensor: torch.Size([8, 15, 20])
             pos_indices = torch.nonzero(target_batch[:, 4, :, :] == 1, as_tuple=True)
+            # (torch.Size([8]),  torch.Size([8]),  torch.Size([8]))
             neg_indices = torch.nonzero(target_batch[:, 4, :, :] == 0, as_tuple=True)
+            # (torch.Size([2392]), torch.Size([2392]), torch.Size([2392]))
 
             # compute loss
+            # bounding box err
             reg_mse = nn.functional.mse_loss(
-                out[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],
-                target_batch[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],
+                out[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],   # torch.Size([8, 4])
+                # each [4]: out[xx[0][0], 0:4, xx[1][0], xx[2][0]
+                target_batch[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],  # torch.Size([8, 4])
             )
+            # confidence err where box exists
             pos_mse = nn.functional.mse_loss(
                 out[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
                 target_batch[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
             )
+            # confidence err where box not exists
             neg_mse = nn.functional.mse_loss(
                 out[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
                 target_batch[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
             )
-            loss = pos_mse + weight_reg * reg_mse + weight_noobj * neg_mse
+            # class err
+            cls_mse = nn.functional.mse_loss(
+                out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+            )
+            loss = pos_mse + weight_reg * reg_mse + weight_noobj * neg_mse + cls_mse
 
             # optimize
             optimizer.zero_grad()

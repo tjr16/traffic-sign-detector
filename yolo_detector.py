@@ -74,7 +74,7 @@ def main():
     file = 'trained_model/det_2021-02-20_12-15-03-144981.pt'
 
     device = 'cpu'
-    detector = yolo_detector(file,device)
+    detector = yolo_detector(file, device)
 
     # uncomment when testing locally
     # dir = os.path.dirname(__file__)
@@ -84,8 +84,7 @@ def main():
     while not rospy.is_shutdown():
         rate.sleep()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     rospy.init_node('yolodetector', anonymous=True)
     main()
-    
