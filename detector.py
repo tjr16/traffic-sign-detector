@@ -98,7 +98,7 @@ class Detector(nn.Module):
                     self.img_width / self.out_cells_x * (bb_index[1] + bb_coeffs[0])
                     - width / 2.0
                 )
-                category = torch.argmax(bb_cate, dim=0)
+                category = torch.argmax(bb_cate, dim=0).item()  # Tensor to int
 
                 img_bbs.append(
                     {

@@ -16,15 +16,25 @@ import wandb
 import utils
 from detector import Detector
 
-# Some param
+# Some parameters
 NUM_CATEGORIES = 15
-CATECORY_DICT = {
-    0: "no_bicycle",
-    2: "dangerous_left",
-    10: "residential",
-    11: "narrows_from_left",
-    12: "narrows_from_right",
-    13: "roundabout"
+CATEGORY_DICT = {
+    0: {"name": "no_bicycle"},
+    1: {"name": "__CLASS 1__"},
+    2: {"name": "dangerous_left"},
+    3: {"name": "__CLASS 3__"},
+    4: {"name": "__CLASS 4__"},
+    5: {"name": "__CLASS 5__"},
+    6: {"name": "__CLASS 6__"},
+    7: {"name": "__CLASS 7__"},
+    8: {"name": "__CLASS 8__"},
+    9: {"name": "__CLASS 8__"},
+    10: {"name": "residential"},
+    11: {"name": "narrows_from_left"},
+    12: {"name": "narrows_from_right"},
+    13: {"name": "roundabout"},
+    14: {"name": "__CLASS 14__"},
+    15: {"name": "__CLASS 15__"}
 }
 
 
@@ -34,7 +44,7 @@ def train(max_iter, device="cpu"):
     Args:
         device: The device to train on."""
 
-    global NUM_CATEGORIES, CATECORY_DICT
+    global NUM_CATEGORIES, CATEGORY_DICT
 
     wandb.init(project="detector_baseline")
 
@@ -121,7 +131,8 @@ def train(max_iter, device="cpu"):
             )
             # class err
             cls_mse = nn.functional.mse_loss(
-                out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+                out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]],
+                target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
             )
             loss = pos_mse + weight_reg * reg_mse + weight_noobj * neg_mse + cls_mse
 
@@ -149,6 +160,8 @@ def train(max_iter, device="cpu"):
             # generate visualization every N iterations
             if current_iteration % 250 == 0 and show_test_images:
                 with torch.no_grad():
+                    # test_images: torch.Size([5, 3, 480, 640])
+                    # out: torch.Size([5, 20, 15, 20])
                     out = detector(test_images).cpu()
                     bbs = detector.decode_output(out, 0.5)
                     # attr of bbs: width, height, x, y, category
@@ -164,7 +177,7 @@ def train(max_iter, device="cpu"):
                         )
 
                         # add bounding boxes
-                        utils.add_bounding_boxes(ax, bbs[i], category_dict=CATECORY_DICT)
+                        utils.add_bounding_boxes(ax, bbs[i], category_dict=CATEGORY_DICT)
 
                         wandb.log(
                             {"test_img_{i}".format(i=i): figure}, step=current_iteration
