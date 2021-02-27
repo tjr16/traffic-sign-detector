@@ -16,7 +16,16 @@ import wandb
 import utils
 from detector import Detector
 
+# Some param
 NUM_CATEGORIES = 15
+CATECORY_DICT = {
+    0: "no_bicycle",
+    2: "dangerous_left",
+    10: "residential",
+    11: "narrows_from_left",
+    12: "narrows_from_right",
+    13: "roundabout"
+}
 
 
 def train(max_iter, device="cpu"):
@@ -25,7 +34,7 @@ def train(max_iter, device="cpu"):
     Args:
         device: The device to train on."""
 
-    global NUM_CATEGORIES
+    global NUM_CATEGORIES, CATECORY_DICT
 
     wandb.init(project="detector_baseline")
 
@@ -127,6 +136,7 @@ def train(max_iter, device="cpu"):
                     "loss pos": pos_mse.item(),
                     "loss neg": neg_mse.item(),
                     "loss reg": reg_mse.item(),
+                    "loss cls": cls_mse.item()
                 },
                 step=current_iteration,
             )
@@ -141,6 +151,7 @@ def train(max_iter, device="cpu"):
                 with torch.no_grad():
                     out = detector(test_images).cpu()
                     bbs = detector.decode_output(out, 0.5)
+                    # attr of bbs: width, height, x, y, category
 
                     for i, test_image in enumerate(test_images):
                         figure, ax = plt.subplots(1)
@@ -153,7 +164,7 @@ def train(max_iter, device="cpu"):
                         )
 
                         # add bounding boxes
-                        utils.add_bounding_boxes(ax, bbs[i])
+                        utils.add_bounding_boxes(ax, bbs[i], category_dict=CATECORY_DICT)
 
                         wandb.log(
                             {"test_img_{i}".format(i=i): figure}, step=current_iteration
