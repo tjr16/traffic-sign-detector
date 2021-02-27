@@ -2,6 +2,9 @@ dd2419_coco
 wandb 
 det_*
 
+# Pycharm
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
