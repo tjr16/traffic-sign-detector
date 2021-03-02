@@ -99,6 +99,9 @@ def train(max_iter, device="cpu"):
 
     current_iteration = 1
     while current_iteration <= max_iterations:
+        train_cls_all = 0
+        train_cls_correct = 0
+
         for img_batch, target_batch in dataloader:
             img_batch = img_batch.to(device)  # torch.Size([8, 3, 480, 640])
             target_batch = target_batch.to(device)  # Batch, 5+category, 15, 20
@@ -136,10 +139,15 @@ def train(max_iter, device="cpu"):
                 target_batch[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
             )
             # class err
-            cls_mse = nn.functional.mse_loss(
-                out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]],
-                target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]],
-            )
+            out_cls = out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+            label_cls = target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+            cls_mse = nn.functional.mse_loss(out_cls, label_cls)
+            # class acc
+            train_cls_predict = torch.argmax(out_cls, 1)
+            train_cls_label = torch.argmax(label_cls, 1)
+            train_cls_correct += torch.sum(train_cls_predict == train_cls_label).item()
+            train_cls_all += train_cls_label.numel()
+
             loss = (
                 pos_mse
                 + weight_reg * reg_mse
@@ -200,6 +208,17 @@ def train(max_iter, device="cpu"):
             current_iteration += 1
             if current_iteration > max_iterations:
                 break
+
+        training_acc = train_cls_correct/train_cls_all
+        # TODO
+        wandb.log(
+            {
+                "training acc": training_acc
+            },
+            step=current_iteration,
+        )
+        if current_iteration % 200 == 0:
+            print("training_acc: %f" % training_acc)
 
     print("\nTraining completed (max iterations reached)")
 
