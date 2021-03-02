@@ -34,7 +34,7 @@ CATEGORY_DICT = {
     12: {"name": "narrows_from_right"},
     13: {"name": "roundabout"},
     14: {"name": "__CLASS 14__"},
-    15: {"name": "__CLASS 15__"}
+    15: {"name": "__CLASS 15__"},
 }
 
 
@@ -42,6 +42,7 @@ def train(max_iter, device="cpu"):
     """Train the network.
 
     Args:
+        max_iter: The maximum of training iterations.
         device: The device to train on."""
 
     global NUM_CATEGORIES, CATEGORY_DICT
@@ -67,6 +68,7 @@ def train(max_iter, device="cpu"):
     learning_rate = wandb.config.learning_rate = 1e-4
     weight_reg = wandb.config.weight_reg = 1
     weight_noobj = wandb.config.weight_noobj = 1
+    weight_cls = wandb.config.weight_cls = 1
 
     # run name (to easily identify model later)
     time_string = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
@@ -98,11 +100,11 @@ def train(max_iter, device="cpu"):
     current_iteration = 1
     while current_iteration <= max_iterations:
         for img_batch, target_batch in dataloader:
-            img_batch = img_batch.to(device)    # torch.Size([8, 3, 480, 640])
+            img_batch = img_batch.to(device)  # torch.Size([8, 3, 480, 640])
             target_batch = target_batch.to(device)  # Batch, 5+category, 15, 20
 
             # run network
-            out = detector(img_batch)   # torch.Size([8, 5+category, 15, 20])
+            out = detector(img_batch)  # torch.Size([8, 5+category, 15, 20])
 
             # positive / negative indices
             # (this could be passed from input_transform to avoid recomputation)
@@ -115,9 +117,13 @@ def train(max_iter, device="cpu"):
             # compute loss
             # bounding box err
             reg_mse = nn.functional.mse_loss(
-                out[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],   # torch.Size([8, 4])
+                out[
+                    pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                ],  # torch.Size([8, 4])
                 # each [4]: out[xx[0][0], 0:4, xx[1][0], xx[2][0]
-                target_batch[pos_indices[0], 0:4, pos_indices[1], pos_indices[2]],  # torch.Size([8, 4])
+                target_batch[
+                    pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                ],  # torch.Size([8, 4])
             )
             # confidence err where box exists
             pos_mse = nn.functional.mse_loss(
@@ -132,9 +138,14 @@ def train(max_iter, device="cpu"):
             # class err
             cls_mse = nn.functional.mse_loss(
                 out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]],
-                target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+                target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]],
             )
-            loss = pos_mse + weight_reg * reg_mse + weight_noobj * neg_mse + cls_mse
+            loss = (
+                pos_mse
+                + weight_reg * reg_mse
+                + weight_noobj * neg_mse
+                + weight_cls * cls_mse
+            )
 
             # optimize
             optimizer.zero_grad()
@@ -147,7 +158,7 @@ def train(max_iter, device="cpu"):
                     "loss pos": pos_mse.item(),
                     "loss neg": neg_mse.item(),
                     "loss reg": reg_mse.item(),
-                    "loss cls": cls_mse.item()
+                    "loss cls": cls_mse.item(),
                 },
                 step=current_iteration,
             )
@@ -177,7 +188,9 @@ def train(max_iter, device="cpu"):
                         )
 
                         # add bounding boxes
-                        utils.add_bounding_boxes(ax, bbs[i], category_dict=CATEGORY_DICT)
+                        utils.add_bounding_boxes(
+                            ax, bbs[i], category_dict=CATEGORY_DICT
+                        )
 
                         wandb.log(
                             {"test_img_{i}".format(i=i): figure}, step=current_iteration
