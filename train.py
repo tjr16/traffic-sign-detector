@@ -96,7 +96,6 @@ def train(max_iter, device="cpu"):
         train_images = train_images.to(device)
         show_train_images = True
 
-
     # load test images
     # these will be evaluated in regular intervals
     test_images = []

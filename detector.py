@@ -30,6 +30,8 @@ class Detector(nn.Module):
         self.head = nn.Conv2d(
             in_channels=1280, out_channels=5+self.num_categories, kernel_size=1
         )
+
+        self.sigmoid = nn.Sigmoid()
         # 1x1 Convolution to reduce channels to out_channels without changing H and W
 
         # 1280x15x20 -> 5x15x20, where each element 5 channel tuple corresponds to
@@ -49,8 +51,9 @@ class Detector(nn.Module):
         """
         features = self.features(inp)
         out = self.head(features)  # Linear (i.e., no) activation
+        out_01 = self.sigmoid(out)
 
-        return out
+        return out_01
 
     def decode_output(self, out, threshold):
         """Convert output to list of bounding boxes.
