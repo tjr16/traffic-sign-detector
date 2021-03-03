@@ -24,6 +24,9 @@ class Detector(nn.Module):
         self.features = models.mobilenet_v2(pretrained=True).features
         # output of mobilenet_v2 will be 1280x15x20 for 480x640 input images
 
+        # for param in self.features.parameters():
+        #     param.requires_grad = False
+
         self.head = nn.Conv2d(
             in_channels=1280, out_channels=5+self.num_categories, kernel_size=1
         )

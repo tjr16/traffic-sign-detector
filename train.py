@@ -77,6 +77,26 @@ def train(max_iter, device="cpu"):
     # init optimizer
     optimizer = torch.optim.Adam(detector.parameters(), lr=learning_rate)
 
+    # load training images
+    train_images = []
+    show_training_images = True
+    directory = "./dd2419_coco/training"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    for idx, file_name in enumerate(os.listdir(directory)):
+        if file_name.endswith(".jpg"):
+            file_path = os.path.join(directory, file_name)
+            train_image = Image.open(file_path)
+            train_images.append(TF.to_tensor(train_image))
+        if idx >= 4:    # only use 5 images
+            break
+
+    if train_images:
+        train_images = torch.stack(train_images)
+        train_images = train_images.to(device)
+        show_train_images = True
+
+
     # load test images
     # these will be evaluated in regular intervals
     test_images = []
@@ -99,6 +119,8 @@ def train(max_iter, device="cpu"):
 
     current_iteration = 1
     while current_iteration <= max_iterations:
+        detector.train()
+
         train_cls_all = 0
         train_cls_correct = 0
 
@@ -177,17 +199,22 @@ def train(max_iter, device="cpu"):
             )
 
             # generate visualization every N iterations
-            if current_iteration % 250 == 0 and show_test_images:
+            show_images = show_train_images and show_test_images
+
+            if current_iteration % 250 == 0 and show_images:
                 with torch.no_grad():
+                    detector.eval()
                     # test_images: torch.Size([5, 3, 480, 640])
                     # out: torch.Size([5, 20, 15, 20])
-                    out = detector(test_images).cpu()
+                    out = detector(train_images).cpu()  # training
                     bbs = detector.decode_output(out, 0.5)
+                    out_test = detector(test_images).cpu()  # test
+                    bbs_test = detector.decode_output(out_test, 0.5)
                     # attr of bbs: width, height, x, y, category
 
-                    for i, test_image in enumerate(test_images):
+                    for i, image in enumerate(train_images):
                         figure, ax = plt.subplots(1)
-                        plt.imshow(test_image.cpu().permute(1, 2, 0))
+                        plt.imshow(image.cpu().permute(1, 2, 0))
                         plt.imshow(
                             out[i, 4, :, :],
                             interpolation="nearest",
@@ -201,9 +228,30 @@ def train(max_iter, device="cpu"):
                         )
 
                         wandb.log(
+                            {"train_img_{i}".format(i=i): figure}, step=current_iteration
+                        )
+                        plt.close()
+
+                    for i, image in enumerate(test_images):
+                        figure, ax = plt.subplots(1)
+                        plt.imshow(image.cpu().permute(1, 2, 0))
+                        plt.imshow(
+                            out[i, 4, :, :],
+                            interpolation="nearest",
+                            extent=(0, 640, 480, 0),
+                            alpha=0.7,
+                        )
+
+                        # add bounding boxes
+                        utils.add_bounding_boxes(
+                            ax, bbs_test[i], category_dict=CATEGORY_DICT
+                        )
+
+                        wandb.log(
                             {"test_img_{i}".format(i=i): figure}, step=current_iteration
                         )
                         plt.close()
+                    detector.train()
 
             current_iteration += 1
             if current_iteration > max_iterations:
@@ -217,8 +265,8 @@ def train(max_iter, device="cpu"):
             },
             step=current_iteration,
         )
-        if current_iteration % 200 == 0:
-            print("training_acc: %f" % training_acc)
+        # if current_iteration % 200 == 0:
+        #     print("training_acc: %f" % training_acc)
 
     print("\nTraining completed (max iterations reached)")
 
@@ -236,7 +284,7 @@ if __name__ == "__main__":
     device = parser.add_mutually_exclusive_group(required=True)
     device.add_argument("--cpu", dest="device", action="store_const", const="cpu")
     device.add_argument("--gpu", dest="device", action="store_const", const="cuda")
-    parser.add_argument("MAX_ITER", default=3000)
+    parser.add_argument("MAX_ITER", type=int, default=3000)
     args = parser.parse_args()
 
     train(int(args.MAX_ITER), args.device)
