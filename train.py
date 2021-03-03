@@ -202,14 +202,15 @@ def train(max_iter, device="cpu"):
             show_images = show_train_images and show_test_images
 
             if current_iteration % 250 == 0 and show_images:
+                thresh = 0.7
                 with torch.no_grad():
                     detector.eval()
                     # test_images: torch.Size([5, 3, 480, 640])
                     # out: torch.Size([5, 20, 15, 20])
                     out = detector(train_images).cpu()  # training
-                    bbs = detector.decode_output(out, 0.5)
+                    bbs = detector.decode_output(out, thresh)
                     out_test = detector(test_images).cpu()  # test
-                    bbs_test = detector.decode_output(out_test, 0.5)
+                    bbs_test = detector.decode_output(out_test, thresh)
                     # attr of bbs: width, height, x, y, category
 
                     for i, image in enumerate(train_images):
@@ -236,7 +237,7 @@ def train(max_iter, device="cpu"):
                         figure, ax = plt.subplots(1)
                         plt.imshow(image.cpu().permute(1, 2, 0))
                         plt.imshow(
-                            out[i, 4, :, :],
+                            out_test[i, 4, :, :],
                             interpolation="nearest",
                             extent=(0, 640, 480, 0),
                             alpha=0.7,
