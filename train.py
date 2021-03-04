@@ -15,27 +15,7 @@ import wandb
 
 import utils
 from detector import Detector
-
-# Some parameters
-NUM_CATEGORIES = 15
-CATEGORY_DICT = {
-    0: {"name": "no_bicycle"},
-    1: {"name": "__CLASS 1__"},
-    2: {"name": "dangerous_left"},
-    3: {"name": "__CLASS 3__"},
-    4: {"name": "__CLASS 4__"},
-    5: {"name": "__CLASS 5__"},
-    6: {"name": "__CLASS 6__"},
-    7: {"name": "__CLASS 7__"},
-    8: {"name": "__CLASS 8__"},
-    9: {"name": "__CLASS 8__"},
-    10: {"name": "residential"},
-    11: {"name": "narrows_from_left"},
-    12: {"name": "narrows_from_right"},
-    13: {"name": "roundabout"},
-    14: {"name": "__CLASS 14__"},
-    15: {"name": "__CLASS 15__"},
-}
+from config import *
 
 
 def train(max_iter, device="cpu"):
@@ -44,8 +24,6 @@ def train(max_iter, device="cpu"):
     Args:
         max_iter: The maximum of training iterations.
         device: The device to train on."""
-
-    global NUM_CATEGORIES, CATEGORY_DICT
 
     wandb.init(project="detector_baseline")
 
@@ -60,7 +38,7 @@ def train(max_iter, device="cpu"):
         transforms=detector.input_transform,
     )
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # training params
     max_iterations = wandb.config.max_iterations = max_iter
@@ -201,15 +179,14 @@ def train(max_iter, device="cpu"):
             show_images = show_train_images and show_test_images
 
             if current_iteration % 250 == 0 and show_images:
-                thresh = 0.7
                 with torch.no_grad():
                     detector.eval()
                     # test_images: torch.Size([5, 3, 480, 640])
                     # out: torch.Size([5, 20, 15, 20])
                     out = detector(train_images).cpu()  # training
-                    bbs = detector.decode_output(out, thresh)
+                    bbs = detector.decode_output(out, CONF_THRESHOLD)
                     out_test = detector(test_images).cpu()  # test
-                    bbs_test = detector.decode_output(out_test, thresh)
+                    bbs_test = detector.decode_output(out_test, CONF_THRESHOLD)
                     # attr of bbs: width, height, x, y, category
 
                     for i, image in enumerate(train_images):
