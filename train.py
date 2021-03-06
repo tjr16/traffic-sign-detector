@@ -43,7 +43,7 @@ def train(max_iter, device="cpu"):
     # training params
     max_iterations = wandb.config.max_iterations = max_iter
 
-    learning_rate = wandb.config.learning_rate = 1e-4
+    learning_rate = wandb.config.learning_rate = LEARNING_RATE
     weight_reg = wandb.config.weight_reg = 1
     weight_noobj = wandb.config.weight_noobj = 1
     weight_cls = wandb.config.weight_cls = 1

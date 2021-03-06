@@ -23,5 +23,7 @@ CATEGORY_DICT = {
 }
 
 BATCH_SIZE = 8
-CONF_THRESHOLD = 0.8    # threshold of confidence
-IOU_THRESHOLD = 0.7  # threshold of IOU for NMS
+CONF_THRESHOLD = 0.7    # threshold of confidence
+IOU_THRESHOLD = 0.4  # threshold of IOU for NMS
+OUTPUT_FUNC = 'clamp'
+LEARNING_RATE = 1e-5

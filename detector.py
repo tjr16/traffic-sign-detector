@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import models
 from torchvision import transforms
 from torchvision import ops
-from config import IOU_THRESHOLD
+from config import IOU_THRESHOLD, OUTPUT_FUNC
 
 
 class Detector(nn.Module):
@@ -33,9 +33,9 @@ class Detector(nn.Module):
         self.head = nn.Conv2d(
             in_channels=1280, out_channels=5+self.num_categories, kernel_size=1
         )
+        # 1x1 Convolution to reduce channels to out_channels without changing H and W
 
         self.sigmoid = nn.Sigmoid()
-        # 1x1 Convolution to reduce channels to out_channels without changing H and W
 
         # 1280x15x20 -> 5x15x20, where each element 5 channel tuple corresponds to
         #   (rel_x_offset, rel_y_offset, rel_x_width, rel_y_height, confidence
@@ -53,8 +53,13 @@ class Detector(nn.Module):
         Compute output of neural network from input.
         """
         features = self.features(inp)
-        out = self.head(features)  # Linear (i.e., no) activation
-        out = self.sigmoid(out)
+
+        # output: linear/ sigmoid/ 0-1 clamp
+        out = self.head(features)
+        if OUTPUT_FUNC == 'sigmoid':
+            out = self.sigmoid(out)
+        if OUTPUT_FUNC == 'clamp':
+            out = torch.clamp(out, min=0, max=1)
 
         return out
 
