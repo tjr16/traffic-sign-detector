@@ -71,14 +71,14 @@ class Detector(nn.Module):
             threshold (float):
                 The threshold above which a bounding box will be accepted.
         Returns:
-            List[List[Dict]]
-            List containing a list of detected bounding boxes in each image.
-            Each dictionary contains the following keys:
-                - "x": Top-left corner column
-                - "y": Top-left corner row
-                - "width": Width of bounding box in pixel
-                - "height": Height of bounding box in pixel
-                - "category": Category
+            bbs (List[List[Dict]]):
+                List containing a list of detected bounding boxes in each image.
+                Each dictionary contains the following keys:
+                    - "x": Top-left corner column
+                    - "y": Top-left corner row
+                    - "width": Width of bounding box in pixel
+                    - "height": Height of bounding box in pixel
+                    - "category": Category
         """
         bbs = []
         # decode bounding boxes for each image
@@ -92,6 +92,7 @@ class Detector(nn.Module):
             # loop over all cells with bounding box center
             for bb_index in bb_indices:
                 bb_coeffs = o[0:4, bb_index[0], bb_index[1]]
+                bb_conf = o[4, bb_index[0], bb_index[1]]
                 bb_cate = o[5:, bb_index[0], bb_index[1]]
 
                 # decode bounding box size and position
@@ -113,7 +114,8 @@ class Detector(nn.Module):
                         "height": height,
                         "x": x,
                         "y": y,
-                        "category": category
+                        "category": category,
+                        "confidence": bb_conf.item()
                     }
                 )
             bbs.append(img_bbs)

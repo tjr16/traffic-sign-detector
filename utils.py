@@ -33,7 +33,8 @@ def add_bounding_boxes(ax, bbs, category_dict=None):
             plt.text(
                 bb["x"],
                 bb["y"],
-                category_dict[bb["category"]]["name"],
+                str(category_dict[bb["category"]]["name"]) +
+                " " + str(bb["confidence"])
             )
 
 
@@ -60,3 +61,7 @@ def load_model(model, path, device):
     state_dict = torch.load(path, map_location=device)
     model.load_state_dict(state_dict)
     return model
+
+
+def iou():
+    raise NotImplementedError

@@ -61,13 +61,15 @@ def train(max_iter, device="cpu"):
     directory = "./dd2419_coco/training"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    for idx, file_name in enumerate(os.listdir(directory)):
+
+    # get 1 image from 100
+    for idx, file_name in enumerate(os.listdir(directory)[::100]):
         if file_name.endswith(".jpg"):
             file_path = os.path.join(directory, file_name)
             train_image = Image.open(file_path)
             train_images.append(TF.to_tensor(train_image))
-        if idx >= 4:    # only use 5 images
-            break
+        # if idx >= 9:    # only use 5 images
+        #     break
 
     if train_images:
         train_images = torch.stack(train_images)
