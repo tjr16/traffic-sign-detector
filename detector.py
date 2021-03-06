@@ -8,6 +8,7 @@ import torch.nn as nn
 from torchvision import models
 from torchvision import transforms
 from torchvision import ops
+from config import IOU_THRESHOLD
 
 
 class Detector(nn.Module):
@@ -57,6 +58,26 @@ class Detector(nn.Module):
 
         return out
 
+    def b2v(self, coeffs, bb_index):
+        """
+        Convert a box parameters to its vertices.
+        Args:
+            coeffs: box coefficients, torch.Size([4])
+            bb_index: where is the center located at?
+
+        Returns:
+            v : N x 2
+        """
+        width = self.img_width * coeffs[2]
+        height = self.img_height * coeffs[3]
+        xc = self.img_width / self.out_cells_x * (bb_index[1] + coeffs[0])
+        yc = self.img_height / self.out_cells_y * (bb_index[0] + coeffs[1])
+        xmin = xc - width / 2.0
+        xmax = xc + width / 2.0
+        ymin = yc - height / 2.0
+        ymax = yc + height / 2.0
+        return torch.Tensor([xmin, ymin, xmax, ymax]).reshape(1, -1)
+
     def decode_output(self, out, threshold):
         """Convert output to list of bounding boxes.
 
@@ -82,16 +103,31 @@ class Detector(nn.Module):
                     - "category": Category
         """
         bbs = []
-        # decode bounding boxes for each image
-        for o in out:   # C x H x W (eg. 20 chan, 15 high, 20 wid)
+
+        # EACH IMAGE: decode bounding boxes
+        for o in out:   # o: C x H x W (eg. 20 chan, 15 high, 20 wid)
             img_bbs = []    # bounding boxes for one image
 
             # find cells with bounding box center
             bb_indices = torch.nonzero(o[4, :, :] >= threshold)
             # n x 2, representing n centers
 
+            # get box vertices and scores
+            num_box = bb_indices.size()[0]
+            all_boxes = torch.zeros(num_box, 4)
+            all_score = torch.zeros(num_box)
+            for idx, bb_index in enumerate(bb_indices):
+                bb_coeffs = o[0:4, bb_index[0], bb_index[1]]
+                all_boxes[idx, :] = self.b2v(bb_coeffs, bb_index)
+                all_score[idx] = o[4, bb_index[0], bb_index[1]]
+
+            # Non Maximum Suppression
+            # return: the indices, torch.Size([n])
+            reserved_indices = ops.nms(all_boxes, all_score, IOU_THRESHOLD)
+            bb_indices_new = bb_indices[reserved_indices, :]
+
             # loop over all cells with bounding box center
-            for bb_index in bb_indices:
+            for bb_index in bb_indices_new:
                 bb_coeffs = o[0:4, bb_index[0], bb_index[1]]    # box param
                 bb_conf = o[4, bb_index[0], bb_index[1]]    # confidence
                 bb_cate = o[5:, bb_index[0], bb_index[1]]   # category

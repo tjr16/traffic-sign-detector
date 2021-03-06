@@ -183,7 +183,7 @@ def train(max_iter, device="cpu"):
             if current_iteration % 250 == 0 and show_images:
                 with torch.no_grad():
                     detector.eval()
-                    # test_images: torch.Size([5, 3, 480, 640])
+                    # train_images: torch.Size([5, 3, 480, 640])
                     # out: torch.Size([batch_size, channels, 15, 20])
                     out = detector(train_images).cpu()  # training
                     bbs = detector.decode_output(out, CONF_THRESHOLD)
