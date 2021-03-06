@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+import sys
+import math
+import json
+
+import rospy
+import tf2_ros
+import tf2_geometry_msgs
+from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped
+from aruco_msgs.msg import MarkerArray
+from crazyflie_driver.msg import Position
+
+# current detection
+
+class aruco_detector:
+
+    def __init__(self, arg):
+        self.sub = rospy.Subscriber('aruco/markers',MarkerArray, self.detect_fb)
+        self.tf_buf   = tf2_ros.Buffer()
+        self.tf_lstn  = tf2_ros.TransformListener(self.tf_buf)
+        self.br = tf2_ros.TransformBroadcaster()
+        self.frame = arg  # the frame with reference to
+
+    def detect_fb(self, data):
+        """
+        feedback function - Subscribe
+        """
+        tf_marker = []
+        if data.markers:
+            if self.frame == "map":
+                for i in range(len(data.markers)):
+                    marker = data.markers[i]
+                    id = marker.id
+                    t = PoseStamped()
+                    t.header.stamp = data.header.stamp
+                    t.header.frame_id = 'cf1/camera_link'
+                    t.pose = marker.pose.pose
+                    if not tf_buf.can_transform(t.header.frame_id, 'map', t.header.stamp):
+                        rospy.logwarn_throttle(5.0, 'No transform from %s to map' % t.header.frame_id)
+                        return
+
+                    pose_map = tf_buf.transform(t,'map')
+                    tf_map = TransformStamped()
+                    tf_map.header.stamp = pose_map.header.stamp
+                    tf_map.header.frame_id = 'map'
+                    tf_map.child_frame_id = 'aruco/detected' + str(id)
+                    tf_map.transform.translation = pose_map.pose.position
+                    tf_map.transform.rotation = pose_map.pose.orientation
+                    tf_marker.append(tf_map)
+            
+            if self.frame == "camera":
+                for i in range(len(data.markers)):
+                    marker = data.markers[i]
+                    id = marker.id
+                    t = PoseStamped()
+                    t.header.stamp = data.header.stamp
+                    t.header.frame_id = 'cf1/camera_link'
+                    t.pose = marker.pose.pose
+                    
+                    tf_cam = TransformStamped()
+                    tf_cam.header.stamp = t.header.stamp
+                    tf_cam.header.frame_id = 'cf1/camera_link'
+                    tf_cam.child_frame_id = 'aruco/detected' + str(id)
+                    tf_cam.transform.translation = t.pose.position
+                    tf_cam.transform.rotation = t.pose.orientation
+                    tf_marker.append(tf_cam)
+
+            for f in tf_marker:
+                self.br.sendTransform(f)
+        return None
+
+def main():
+    rospy.init_node('aruco_detector')
+    rospy.loginfo("Aruco Detector Staring Working")
+    detector = aruco_detector("camera")
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting down")
+
+
+if __name__ == "__main__":
+    main()
