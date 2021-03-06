@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 from torchvision import transforms
+from torchvision import ops
 
 
 class Detector(nn.Module):
@@ -52,9 +53,9 @@ class Detector(nn.Module):
         """
         features = self.features(inp)
         out = self.head(features)  # Linear (i.e., no) activation
-        out_01 = self.sigmoid(out)
+        out = self.sigmoid(out)
 
-        return out_01
+        return out
 
     def decode_output(self, out, threshold):
         """Convert output to list of bounding boxes.
@@ -71,28 +72,29 @@ class Detector(nn.Module):
             threshold (float):
                 The threshold above which a bounding box will be accepted.
         Returns:
-            List[List[Dict]]
-            List containing a list of detected bounding boxes in each image.
-            Each dictionary contains the following keys:
-                - "x": Top-left corner column
-                - "y": Top-left corner row
-                - "width": Width of bounding box in pixel
-                - "height": Height of bounding box in pixel
-                - "category": Category
+            bbs (List[List[Dict]]):
+                List containing a list of detected bounding boxes in each image.
+                Each dictionary contains the following keys:
+                    - "x": Top-left corner column
+                    - "y": Top-left corner row
+                    - "width": Width of bounding box in pixel
+                    - "height": Height of bounding box in pixel
+                    - "category": Category
         """
         bbs = []
         # decode bounding boxes for each image
-        for o in out:   # C x H x W
-            img_bbs = []
+        for o in out:   # C x H x W (eg. 20 chan, 15 high, 20 wid)
+            img_bbs = []    # bounding boxes for one image
 
             # find cells with bounding box center
             bb_indices = torch.nonzero(o[4, :, :] >= threshold)
-            # n x 2, representing n ce;;s
+            # n x 2, representing n centers
 
             # loop over all cells with bounding box center
             for bb_index in bb_indices:
-                bb_coeffs = o[0:4, bb_index[0], bb_index[1]]
-                bb_cate = o[5:, bb_index[0], bb_index[1]]
+                bb_coeffs = o[0:4, bb_index[0], bb_index[1]]    # box param
+                bb_conf = o[4, bb_index[0], bb_index[1]]    # confidence
+                bb_cate = o[5:, bb_index[0], bb_index[1]]   # category
 
                 # decode bounding box size and position
                 width = self.img_width * bb_coeffs[2]
@@ -113,9 +115,11 @@ class Detector(nn.Module):
                         "height": height,
                         "x": x,
                         "y": y,
-                        "category": category
+                        "category": category,
+                        "confidence": bb_conf.item()
                     }
                 )
+
             bbs.append(img_bbs)
 
         return bbs
