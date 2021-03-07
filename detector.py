@@ -14,7 +14,7 @@ from config import IOU_THRESHOLD, OUTPUT_FUNC
 class Detector(nn.Module):
     """Baseline module for object detection."""
 
-    def __init__(self, num_categories=15):
+    def __init__(self, num_categories=15, device='cuda'):
         """Create the module.
 
         Define all trainable layers.
@@ -22,6 +22,7 @@ class Detector(nn.Module):
         super(Detector, self).__init__()
 
         self.num_categories = num_categories
+        self.device = device
 
         self.features = models.mobilenet_v2(pretrained=True).features
         # output of mobilenet_v2 will be 1280x15x20 for 480x640 input images
@@ -37,9 +38,6 @@ class Detector(nn.Module):
 
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-
-# >>> input = torch.randn(2, 3)
-# >>> output = m(input)
 
         # 1280x15x20 -> 5x15x20, where each element 5 channel tuple corresponds to
         #   (rel_x_offset, rel_y_offset, rel_x_width, rel_y_height, confidence
@@ -61,14 +59,17 @@ class Detector(nn.Module):
         # output: linear/ sigmoid/ 0-1 clamp
         out = self.head(features)   # batch, channel(20), 15, 20
         if OUTPUT_FUNC == 'sigmoid':
-            out = self.sigmoid(out)
-        if OUTPUT_FUNC == 'clamp':
-            out = torch.clamp(out, min=0, max=1)
-        if OUTPUT_FUNC == 'softmax':
-            out[:, :5, :, :] = self.sigmoid(out[:, :5, :, :])
-            out[:, 5:, :, :] = self.softmax(out[:, 5:, :, :])
+            out1 = self.sigmoid(out)
+        elif OUTPUT_FUNC == 'clamp':
+            out1 = torch.clamp(out, min=0, max=1)
+        elif OUTPUT_FUNC == 'softmax':
+            out1 = torch.zeros(out.size()).to(self.device)
+            out1[:, :5, :, :] = self.sigmoid(out[:, :5, :, :])
+            out1[:, 5:, :, :] = self.softmax(out[:, 5:, :, :])
+        else:
+            out1 = out
 
-        return out
+        return out1
 
     def b2v(self, coeffs, bb_index):
         """

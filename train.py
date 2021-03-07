@@ -28,7 +28,7 @@ def train(max_iter, device="cpu"):
     wandb.init(project="detector_baseline")
 
     # Init model
-    detector = Detector(NUM_CATEGORIES).to(device)
+    detector = Detector(NUM_CATEGORIES, device).to(device)
 
     wandb.watch(detector)
 
