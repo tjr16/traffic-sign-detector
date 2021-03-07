@@ -1,7 +1,11 @@
 """
 Define some parameters in this script.
 """
+
+# parameters of data set
 NUM_CATEGORIES = 15
+IMG_W = 640
+IMG_H = 480
 
 CATEGORY_DICT = {
     0: {"name": "no_bicycle"},
@@ -21,6 +25,7 @@ CATEGORY_DICT = {
     14: {"name": "__CLASS 14__"}
 }
 
+# parameters of network training
 BATCH_SIZE = 8
 CONF_THRESHOLD = 0.8    # threshold of confidence
 IOU_THRESHOLD = 0.4  # threshold of IOU for NMS
