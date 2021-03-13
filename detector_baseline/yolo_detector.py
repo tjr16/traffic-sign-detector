@@ -33,7 +33,7 @@ class yolo_detector:
         load_path = os.path.join(dir, file_name)
 
         # initialize model
-        detector = Detector().to(load_device)
+        detector = Detector(device='cpu').to(load_device)
         self.model = utils.load_model(detector, load_path, load_device)
         self.model.eval()
         self.bridge = CvBridge()
@@ -49,6 +49,7 @@ class yolo_detector:
         self.br = tf2_ros.TransformBroadcaster()
 
         self.category_dict = CATEGORY_DICT
+        self.threshold = CONF_THRESHOLD
 
 
     def publish_bounding_image(self, img, bbs):
@@ -77,9 +78,9 @@ class yolo_detector:
             print(e)
         
          
-        orb = cv2.ORB_create()
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-        kp1, res1 = orb.detectAndCompute(cv_image, None)
+        # orb = cv2.ORB_create()
+        # bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        # kp1, res1 = orb.detectAndCompute(cv_image, None)
         
 
 
@@ -163,9 +164,6 @@ class yolo_detector:
         Going through Training Model/Feature detector
         """
 
-        # threshold value for accepting detection
-        threshold = 0.6
-
         try:
             img = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
@@ -179,7 +177,7 @@ class yolo_detector:
         with torch.no_grad():
             s_t = time.time()
             out = self.model(image)
-            bbs = self.model.decode_output(out, threshold)
+            bbs = self.model.decode_output(out, self.threshold)
         self.publish_bounding_image(img,bbs)
         #sign_list = self.publish_pose(data, bbs)
         #self.publish_trans(sign_list)
@@ -191,7 +189,7 @@ def main(args):
     rospy.loginfo("Yolo Detector Staring Working")
 
     # initialize detector
-    file = 'trained_model/det_2021-03-01_py2.pt'
+    file = 'trained_model/det_2021-03-07_13-39-01-343362.pt'
     device = 'cpu'
     detector = yolo_detector(file,device)
 
