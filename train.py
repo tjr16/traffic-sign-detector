@@ -135,10 +135,12 @@ def train(max_iter, device="cpu"):
                 target_batch[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
             )
             # confidence err where box not exists
+            # TODO: replace MSE with crossentropy, add a param in config.py
             neg_mse = nn.functional.mse_loss(
                 out[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
                 target_batch[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
             )
+
             # class err
             out_cls = out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
             label_cls = target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]

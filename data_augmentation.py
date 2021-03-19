@@ -20,12 +20,12 @@ import albumentations as A
 # How to import `Rotate` depends on the version.
 from albumentations.augmentations.transforms import Rotate
 
-from config import NUM_CATEGORIES, CATEGORY_DICT, IMG_W, IMG_H
+from config import CATEGORY_DICT, IMG_W, IMG_H
 
 
 # check data set before augmentation!
-IMAGE_ID_START = 1258    # beginning image_id of new images
-ID_START = 1257     # beginning id of new annotations
+IMAGE_ID_START = 1258  # beginning image_id of new images
+ID_START = 1257  # beginning id of new annotations
 
 # data augmentation config
 MIN_VIS = 0.9
@@ -36,16 +36,23 @@ BBOX_PARAM = A.BboxParams(
 # NOTE: `min_visibility` ensures that the bbox is not lost.
 # `label_fields` will be an argument when using this transform
 
-# path
-COVER_OLD = False   # cover the original file or not
+# overwrite the original file or not
+OVERWRITE = True
+# set reading path
 ANN_PATH = "dd2419_coco/annotations/training.json"
 IMG_PATH = "dd2419_coco/training/"
-if COVER_OLD:
+# get writing path
+if OVERWRITE:
+    # original images and annotations will be overwritten
+    # recommend that make a backup of original data set
     NEW_ANN_PATH = ANN_PATH
     NEW_IMG_PATH = IMG_PATH
 else:
+    # new images and json file are generated in a new path
     NEW_ANN_PATH = "dd2419_coco/annotations/training_new.json"
-    NEW_IMG_PATH = "dd2419_coco/training_new/"  # save in a new folder and will merge later
+    NEW_IMG_PATH = (
+        "dd2419_coco/training_new/"  # save in a new folder and will merge later
+    )
 
 
 class Strategy(ABC):
@@ -95,7 +102,7 @@ class NoFlip(Strategy):
     """
 
     def __init__(self, strategy_name="NoFlip"):
-        super.__init__(strategy_name)
+        super().__init__(strategy_name)
         self.__transforms = [
             A.RandomSizedBBoxSafeCrop(width=IMG_W, height=IMG_H, p=0.5),
             A.RandomBrightnessContrast(p=0.2),
@@ -118,25 +125,36 @@ class DataAugmentation:
     A class for image data augmentation.
     """
 
-    def __init__(self, dup_times=DUP_TIMES):
+    def __init__(
+        self, begin, end, image_id=IMAGE_ID_START, idx=ID_START, dup_times=DUP_TIMES
+    ):
+        self.begin = begin
+        self.end = end
+        self.image_id = image_id  # new image_id of ann = id of image
+        self.idx = idx  # new id of ann
         self.dup_times = dup_times
 
-        self.images = []        # transformed images: a list of numpy.ndarray
-        self.data = {}          # store original json
-        self.new_data = {}      # store new json
-        self.annotations = []   # store the annotation list of original json
-        self.images_json = []   # store new image data
-        self.ann_json = []      # store new annotation data
-
-        self.image_id = IMAGE_ID_START  # new image_id of ann = id of image
-        self.idx = ID_START # new id of ann
+        self.images = []  # transformed images: a list of numpy.ndarray
+        self.data = {}  # store original json
+        self.new_data = {}  # store new json
+        self.all_annotations = []  # store the annotation list of original json
+        self.annotations = []  # store the annotation list for augmentation
+        self.images_json = []  # store new image data
+        self.ann_json = []  # store new annotation data
 
     def update_id(self):
         """
-        Update idx and image_id
+        Update idx and image_id (plus one)
         """
         self.image_id = self.image_id + 1
         self.idx = self.idx + 1
+
+    def get_id(self):
+        """
+        Get idx and image_id
+        Returns: idx and image_id
+        """
+        return self.image_id, self.idx
 
     def read(self, path):
         """
@@ -144,7 +162,8 @@ class DataAugmentation:
         """
         with open(path) as json_file:
             self.data = json.load(json_file)
-            self.annotations = self.data["annotations"]
+            self.all_annotations = self.data["annotations"]
+            self.annotations = self.all_annotations[self.begin : self.end]
 
     @staticmethod
     def label2strategy(label):
@@ -203,7 +222,7 @@ class DataAugmentation:
         cv2.waitKey()
         cv2.destroyAllWindows()
 
-    def augment(self, debug=False):
+    def augment(self, debug=-1):
         """
         Do data augmentation.
         Args:
@@ -213,7 +232,7 @@ class DataAugmentation:
         # check annotations and corresponding images
         for idx in range(len(self.annotations)):
             # NOTE: `idx == image_id` does not always hold.
-            image_id = self.annotations[idx]['image_id']
+            image_id = self.annotations[idx]["image_id"]
             idx_str = "%06d" % image_id  # pad zero
             img_path = IMG_PATH + idx_str + ".jpg"
             image = cv2.imread(img_path)
@@ -233,23 +252,36 @@ class DataAugmentation:
                 image_transformed = transformed["image"]  # ndarray, (W, H, C=3)
                 bbox_transformed = transformed["bboxes"]
                 label_transformed = transformed["class_labels"]
-                self.images.append(image_transformed)
 
-                # store annotation json
-                # TODO: update 'id' and 'image_id'
-                # example:
-                # json['images']  {'id': 0, 'width': 640, 'height': 480, 'file_name': '000000.jpg'}
-                # json['annotations'] {'id': 0, 'image_id': 0, 'category_id': 0, 'bbox': [325, 192, 68, 65]}
+                # check if bounding box exists
+                if label_transformed:
+                    self.images.append(image_transformed)
 
-                self.ann_json.append({'id': self.idx, 'image_id': self.image_id, 'category_id': label_transformed[0],
-                                      'bbox': list(bbox_transformed[0])})
-                self.update_id()
+                    # store annotation json
+                    # TODO: update 'id' and 'image_id'
+                    # example:
+                    # json['images']  {'id': 0, 'width': 640, 'height': 480, 'file_name': '000000.jpg'}
+                    # json['annotations'] {'id': 0, 'image_id': 0, 'category_id': 0, 'bbox': [325, 192, 68, 65]}
 
-            if debug:
+                    self.ann_json.append(
+                        {
+                            "id": self.idx,
+                            "image_id": self.image_id,
+                            "category_id": label_transformed[0],
+                            "bbox": list(bbox_transformed[0]),
+                        }
+                    )
+
+                    self.update_id()
+
+            if idx == debug - 1:
                 DataAugmentation.show_image_array(
                     image_transformed.copy(), bbox_transformed, label_transformed
                 )
                 break
+
+            if idx % 100 == 0:
+                print("Augmentation: ", idx, "...")
 
     def write_image(self):
         """
@@ -257,39 +289,86 @@ class DataAugmentation:
         """
         object_dir = os.getcwd() + "/" + NEW_IMG_PATH
         if not os.path.exists(object_dir):
-            os.makedirs("/" + NEW_IMG_PATH)
+            os.makedirs("./" + NEW_IMG_PATH)
         for idx, img in enumerate(self.images):
-            save_path = NEW_IMG_PATH + "new" + str(idx) + ".jpg"
+            save_id = self.ann_json[idx]["image_id"]
+            save_path = NEW_IMG_PATH + "new" + str(save_id) + ".jpg"
             # save image in the correct directory
             cv2.imwrite(save_path, img)
 
             # store image json
             # TODO: update 'id' (image_id)
-            self.images_json.append({'id': self.ann_json[idx]['image_id'], 'width': 640, 'height': 480,
-                                     'file_name': "new" + str(idx) + ".jpg"})
+            self.images_json.append(
+                {
+                    "id": save_id,
+                    "width": 640,
+                    "height": 480,
+                    "file_name": "new" + str(save_id) + ".jpg",
+                }
+            )
 
     def update_json(self):
         """
         Merge new json data into the original one.
         Only 'images' and 'annotations' in 'self.data' are needed to be updated.
         """
-        self.new_data['info'] = self.data['info']
-        self.new_data['images'] = self.data['images'] + self.images_json
-        self.new_data['annotations'] = self.annotations + self.ann_json
-        self.new_data['categories'] = self.data['categories']
+        self.new_data["info"] = self.data["info"]
+        self.new_data["images"] = self.data["images"] + self.images_json
+        self.new_data["annotations"] = self.all_annotations + self.ann_json
+        self.new_data["categories"] = self.data["categories"]
 
-        with open(NEW_ANN_PATH, 'w') as json_file:
+        with open(NEW_ANN_PATH, "w") as json_file:
             json.dump(self.new_data, json_file, indent=2)
-            print('JSON file written')
+            print("JSON file written")
 
 
-def data_augmentation(debug=False):
-    da = DataAugmentation()
-    da.read(ANN_PATH)   # read annotation data
-    da.augment(debug)   # read images; data augmentation; get annotation json
-    da.write_image()    # write images; get image json
-    da.update_json()    # update json file
+def data_augmentation(begin, end, image_id, idx, debug=-1):
+    """
+    Args:
+        begin: int, From which image
+        end: int, To which image (excluding `end` itself)
+        image_id:
+        idx:
+        debug: int, For debugging
+    """
+    print("=== Data augmentation from {} to {}".format(begin, end) + "===")
+    da = DataAugmentation(begin=begin, end=end, image_id=image_id, idx=idx)
+    print("Reading annotations...")
+    da.read(ANN_PATH)  # read annotation data
+    print("Begin augmentation...")
+    da.augment(debug)  # read images; data augmentation; get annotation json
+    print(str(len(da.images)) + " new images generated.")
+    print("Writing images...")
+    da.write_image()  # write images; get image json
+    print("Writing json files...")
+    da.update_json()  # update json file
+    print("=== Part of augmentation finished ===")
+    return da.get_id()
 
 
 if __name__ == "__main__":
-    data_augmentation(debug=True)
+    # There is a big problem that RAM is not enough for too many images.
+    # set `DEBUG` to zero or negative to exit debug mode.
+    DEBUG = 0
+    new_image_id, new_id = IMAGE_ID_START, ID_START
+    new_image_id, new_id = data_augmentation(
+        begin=0, end=200, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=200, end=400, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=400, end=600, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=600, end=800, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=800, end=1000, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=1000, end=1200, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
+    new_image_id, new_id = data_augmentation(
+        begin=1200, end=ID_START, image_id=new_image_id, idx=new_id, debug=DEBUG
+    )
