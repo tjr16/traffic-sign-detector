@@ -26,7 +26,16 @@ $ To be filled
 ```
 # Running
 ### Increase functionality of CPU
+You can type the following line to check current CPU Running frequency:
+```
+grep MHz /proc/cpuinfo
+```
+If it's largely below the standard frequency the product is said to be, probably check if you PC is on powersave mode:
 https://askubuntu.com/questions/929884/how-to-set-performance-instead-of-powersave-as-default
+```
+sudo systemctl restart cpufrequtils
+```
+Above line is just for convenience for me.
 ### Get ros node started
 ```
 $ rosrun perception yolo_detector.py
