@@ -25,6 +25,8 @@ $ mkdir build
 $ To be filled
 ```
 # Running
+### Increase functionality of CPU
+https://askubuntu.com/questions/929884/how-to-set-performance-instead-of-powersave-as-default
 ### Get ros node started
 ```
 $ rosrun perception yolo_detector.py
