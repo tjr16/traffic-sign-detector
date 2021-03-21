@@ -18,7 +18,9 @@ $ mkdir build
 ```
 
 ### Install opencv <for feature detection, not implemented yet>
-
+```
+$ To be filled
+```
 # Running
 ### Get ros node started
 ```
