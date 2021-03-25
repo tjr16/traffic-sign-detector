@@ -17,7 +17,7 @@ $ git clone -b detection https://github.com/tjr16/dd2419_detector_baseline.git
 ```
 Extract all the files from `dd2419_detector_baseline` to `perception`
 ```
-$ mkdir build
+$ catkin build
 ```
 
 ### Install opencv <for feature detection, not implemented yet>
