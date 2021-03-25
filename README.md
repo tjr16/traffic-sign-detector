@@ -15,7 +15,7 @@ $ source ../devel/setup.$(basename $SHELL)
 $ mkdir perception
 $ git clone -b detection https://github.com/tjr16/dd2419_detector_baseline.git
 ```
-Extract all the files from `dd2419_detector_baseline` to `perception`
+Extract all the files from `dd2419_detector_baseline` to `perception` and then build 
 ```
 $ catkin build
 ```
