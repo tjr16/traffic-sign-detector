@@ -181,8 +181,8 @@ class yolo_detector:
             out = self.model(image)
             bbs = self.model.decode_output(out, threshold)
         self.publish_bounding_image(img,bbs)
-        #sign_list = self.publish_pose(data, bbs)
-        #self.publish_trans(sign_list)
+        sign_list = self.publish_pose(data, bbs)
+        self.publish_trans(sign_list)
         return None
 
 
