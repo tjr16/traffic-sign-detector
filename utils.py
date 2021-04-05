@@ -4,7 +4,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 
 
-def add_bounding_boxes(ax, bbs, category_dict=None):
+def add_bounding_boxes(ax, bbs, color="r", category_dict=None):
     """Add bounding boxes to specified axes.
 
     Args:
@@ -24,7 +24,7 @@ def add_bounding_boxes(ax, bbs, category_dict=None):
             bb["width"],
             bb["height"],
             linewidth=1,
-            edgecolor="r",
+            edgecolor=color,
             facecolor="none",
         )
         ax.add_patch(rect)
