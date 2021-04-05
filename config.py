@@ -25,9 +25,14 @@ CATEGORY_DICT = {
     14: {"name": "stop"}
 }
 
+# weights of mse
+WEIGHT_REG = 10
+WEIGHT_NOOBJ = 0.5
+WEIGHT_CLASS = 20
+
 # parameters of network training
 BATCH_SIZE = 8
-CONF_THRESHOLD = 0.8    # threshold of confidence
-IOU_THRESHOLD = 0.4  # threshold of IOU for NMS
-OUTPUT_FUNC = 'softmax'
+CONF_THRESHOLD = 0.75    # threshold of confidence
+IOU_THRESHOLD = 0.1  # threshold of IOU for NMS
+OUTPUT_FUNC = 'sigmoid'
 LEARNING_RATE = 1e-4

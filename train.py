@@ -44,9 +44,9 @@ def train(max_iter, device="cpu"):
     max_iterations = wandb.config.max_iterations = max_iter
 
     learning_rate = wandb.config.learning_rate = LEARNING_RATE
-    weight_reg = wandb.config.weight_reg = 1
-    weight_noobj = wandb.config.weight_noobj = 1
-    weight_cls = wandb.config.weight_cls = 1
+    weight_reg = wandb.config.weight_reg = WEIGHT_REG
+    weight_noobj = wandb.config.weight_noobj = WEIGHT_NOOBJ
+    weight_cls = wandb.config.weight_cls = WEIGHT_CLASS
 
     # run name (to easily identify model later)
     time_string = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
@@ -122,13 +122,14 @@ def train(max_iter, device="cpu"):
             # bounding box err
             reg_mse = nn.functional.mse_loss(
                 out[
-                    pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
                 ],  # torch.Size([8, 4])
                 # each [4]: out[xx[0][0], 0:4, xx[1][0], xx[2][0]
                 target_batch[
-                    pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
                 ],  # torch.Size([8, 4])
             )
+
             # confidence err where box exists
             pos_mse = nn.functional.mse_loss(
                 out[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
@@ -144,7 +145,13 @@ def train(max_iter, device="cpu"):
             # class err
             out_cls = out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
             label_cls = target_batch[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
-            cls_mse = nn.functional.mse_loss(out_cls, label_cls)
+
+            if OUTPUT_FUNC == 'softmax':
+                # y_tensor = torch.tensor(label_cls, dtype=torch.long, device=device)
+                cls_mse = nn.functional.cross_entropy(out_cls, torch.max(label_cls, 1)[1])
+            else:
+                cls_mse = nn.functional.mse_loss(out_cls, label_cls)
+
             # class acc
             train_cls_predict = torch.argmax(out_cls, 1)
             train_cls_label = torch.argmax(label_cls, 1)
@@ -152,10 +159,10 @@ def train(max_iter, device="cpu"):
             train_cls_all += train_cls_label.numel()
 
             loss = (
-                pos_mse
-                + weight_reg * reg_mse
-                + weight_noobj * neg_mse
-                + weight_cls * cls_mse
+                    pos_mse
+                    + weight_reg * reg_mse
+                    + weight_noobj * neg_mse
+                    + weight_cls * cls_mse
             )
 
             # optimize
