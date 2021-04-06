@@ -25,8 +25,10 @@ from config import CATEGORY_DICT, IMG_W, IMG_H
 
 
 # check data set before augmentation!
-IMAGE_ID_START = 1258  # beginning image_id of new images
-ID_START = 1257  # beginning id of new annotations
+# IMAGE_ID_START = 1258  # beginning image_id of new images
+# ID_START = 1257  # beginning id of new annotations
+IMAGE_ID_START = 2008  # beginning image_id of new images
+ID_START = 2008  # beginning id of new annotations
 
 # data augmentation config
 MIN_VIS = 0.9
@@ -56,10 +58,10 @@ BBOX_PARAM = A.BboxParams(
 # `label_fields` will be an argument when using this transform
 
 # overwrite the original file or not
-OVERWRITE = True
+OVERWRITE = False   # TODO: if testing, set this FALSE
 # set reading path
-ANN_PATH = "dd2419_coco/annotations/training.json"
-IMG_PATH = "dd2419_coco/training/"
+ANN_PATH = "dd2419_coco/annotations/training_all_new.json"
+IMG_PATH = "dd2419_coco/training_all_images/"
 # get writing path
 if OVERWRITE:
     # original images and annotations will be overwritten
@@ -68,9 +70,10 @@ if OVERWRITE:
     NEW_IMG_PATH = IMG_PATH
 else:
     # new images and json file are generated in a new path
-    NEW_ANN_PATH = "dd2419_coco/annotations/training_new.json"
+    NEW_ANN_PATH = "dd2419_coco/annotations/training_all_new_aug.json"
     NEW_IMG_PATH = (
-        "dd2419_coco/training_new/"  # save in a new folder and will merge later
+        "dd2419_coco/training_all_images_new/"
+        # save in a new folder and will merge later
     )
 
 
@@ -101,7 +104,7 @@ class AllTransform(Strategy):
             A.HorizontalFlip(p=0.2),
             A.VerticalFlip(p=0.2),
             A.RandomBrightnessContrast(p=0.2),
-            Rotate(limit=(-10, 10), p=0.2),
+            Rotate(limit=(-7, 7), p=0.2),
             A.Blur(p=0.2),
             A.ColorJitter(p=0.2),
             A.GaussNoise(p=0.2),
@@ -125,7 +128,7 @@ class NoFlip(Strategy):
         self.__transforms = [
             A.RandomSizedBBoxSafeCrop(width=IMG_W, height=IMG_H, p=0.5),
             A.RandomBrightnessContrast(p=0.2),
-            Rotate(limit=(-10, 10), p=0.3),
+            Rotate(limit=(-7, 7), p=0.3),
             A.Blur(p=0.2),
             A.ColorJitter(p=0.3),
             A.GaussNoise(p=0.2),
@@ -196,7 +199,7 @@ class DataAugmentation:
             label: int
         Returns: a Strategy object
         """
-        if label in [2, 11, 12]:
+        if label in [2, 3, 4, 5, 11, 12]:
             # TODO: more labels after data collection of missing classes
             return NoFlip()
         else:
@@ -256,8 +259,12 @@ class DataAugmentation:
         for idx in range(len(self.annotations)):
             # NOTE: `idx == image_id` does not always hold.
             image_id = self.annotations[idx]["image_id"]
-            idx_str = "%06d" % image_id  # pad zero
-            img_path = IMG_PATH + idx_str + ".jpg"
+            #
+            image_name = self.data["images"][idx]["file_name"]
+            #
+            # idx_str = "%06d" % image_id  # pad zero
+            # img_path = IMG_PATH + idx_str + ".jpg"
+            img_path = IMG_PATH + image_name
             image = cv2.imread(img_path)
             bbox = self.annotations[idx]["bbox"]
             label = self.annotations[idx]["category_id"]
@@ -374,24 +381,37 @@ if __name__ == "__main__":
     # set `DEBUG` to zero or negative to exit debug mode.
     DEBUG = 0
     new_image_id, new_id = IMAGE_ID_START, ID_START
-    new_image_id, new_id = data_augmentation(
-        begin=0, end=200, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=200, end=400, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=400, end=600, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=600, end=800, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=800, end=1000, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=1000, end=1200, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
-    new_image_id, new_id = data_augmentation(
-        begin=1200, end=ID_START, image_id=new_image_id, idx=new_id, debug=DEBUG
-    )
+    begin, end = 0, 200
+
+    while begin < ID_START:
+        # augment 200 images each time
+        new_image_id, new_id = data_augmentation(
+            begin=begin, end=end, image_id=new_image_id, idx=new_id, debug=DEBUG
+        )
+        begin = begin + 200
+        end = end + 200
+        if end > ID_START:
+            end = ID_START
+
+
+    # new_image_id, new_id = data_augmentation(
+    #     begin=0, end=200, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=200, end=400, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=400, end=600, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=600, end=800, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=800, end=1000, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=1000, end=1200, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
+    # new_image_id, new_id = data_augmentation(
+    #     begin=1200, end=ID_START, image_id=new_image_id, idx=new_id, debug=DEBUG
+    # )
