@@ -12,6 +12,7 @@ import os
 import json
 import random
 from abc import ABC, abstractmethod
+from collections import Counter
 
 import cv2
 import albumentations as A
@@ -29,7 +30,25 @@ ID_START = 1257  # beginning id of new annotations
 
 # data augmentation config
 MIN_VIS = 0.9
-DUP_TIMES = 20  # duplicate and transform how many times for each image
+# DUP_TIMES = 20  # duplicate and transform how many times for each image
+DUP_TIMES = {
+    0: 0,
+    2: 0,
+    10: 1,
+    13: 0,
+    12: 0,
+    11: 0,
+    1: 2,
+    3: 2,
+    4: 2,
+    5: 2,
+    6: 2,
+    8: 2,
+    9: 2,
+    14: 2,
+    7: 8,
+}
+
 BBOX_PARAM = A.BboxParams(
     format="coco", min_visibility=MIN_VIS, label_fields=["class_labels"]
 )
@@ -142,6 +161,8 @@ class DataAugmentation:
         self.images_json = []  # store new image data
         self.ann_json = []  # store new annotation data
 
+        self.counter = Counter()
+
     def update_id(self):
         """
         Update idx and image_id (plus one)
@@ -164,6 +185,8 @@ class DataAugmentation:
             self.data = json.load(json_file)
             self.all_annotations = self.data["annotations"]
             self.annotations = self.all_annotations[self.begin : self.end]
+            for i in range(len(self.all_annotations)):
+                self.counter.update([self.all_annotations[i]["category_id"]])
 
     @staticmethod
     def label2strategy(label):
@@ -240,7 +263,7 @@ class DataAugmentation:
             label = self.annotations[idx]["category_id"]
             # label_str = str(label)
 
-            for _ in range(self.dup_times):
+            for _ in range(self.dup_times[label]):
                 # generate a new image
                 strategy = DataAugmentation.label2strategy(label)
                 transform = strategy.get_transform()
@@ -303,7 +326,7 @@ class DataAugmentation:
                     "id": save_id,
                     "width": 640,
                     "height": 480,
-                    "file_name": "new" + str(save_id) + ".jpg",
+                    "file_name": "AUG_" + str(save_id) + ".jpg",
                 }
             )
 
