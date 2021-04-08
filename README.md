@@ -44,6 +44,7 @@ $ rosrun perception yolo_detector.py
 ```
 $ rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 map cf1/odom
 ```
+💫 most things should be visualized in Rviz! Check image sending from sign/detection & the tf xD!
 
 ### Check message information
 ```
@@ -55,4 +56,4 @@ $ rosmsg info perception/SignArray
 $ rostopic echo sign/detected
 ```
 The echoing information should be of type SignArray which refers to an array of the signs it is detected currently, empty if no detection found
-Visualize in Rviz! Check image sending from sign/detection & the tf xD!
+
