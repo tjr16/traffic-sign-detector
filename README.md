@@ -25,7 +25,7 @@ $ catkin build
 $ To be filled
 ```
 # Running
-### Increase functionality of CPU
+### *** Tips: to increase functionality of CPU ***
 You can type the following line to check current CPU Running frequency:
 ```
 grep MHz /proc/cpuinfo
@@ -40,6 +40,10 @@ Above line is just for convenience for me.
 ```
 $ rosrun perception yolo_detector.py
 ```
+### Create a tf from map to odom (if you already have one, skip this step:)
+```
+$ rosrun tf2_ros static_transform_publisher 0 0 0 0 0 0 map cf1/odom
+```
 
 ### Check message information
 ```
@@ -51,3 +55,4 @@ $ rosmsg info perception/SignArray
 $ rostopic echo sign/detected
 ```
 The echoing information should be of type SignArray which refers to an array of the signs it is detected currently, empty if no detection found
+Visualize in Rviz! Check image sending from sign/detection & the tf xD!
