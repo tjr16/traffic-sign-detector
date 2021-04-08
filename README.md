@@ -57,3 +57,6 @@ $ rostopic echo sign/detected
 ```
 The echoing information should be of type SignArray which refers to an array of the signs it is detected currently, empty if no detection found
 
+### Nice reminder
+- The confidence in the config.py file decides the tolerance for detection. Higher confidence would easily reject the detection and vise versa. If you cannot detection anything while there should be, try lower this value. 
+- Distance > 0.5m makes classification somehow unstable :(
