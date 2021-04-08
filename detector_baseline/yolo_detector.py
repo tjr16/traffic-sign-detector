@@ -61,7 +61,7 @@ class yolo_detector:
             # add bounding box
             start_point = (box["x"], box["y"])
             text_point = (box["x"], box["y"] - 5)
-            end_point = (box["x"] + box["height"], box["y"]+box["width"])
+            end_point = (box["x"] + box["width"], box["y"]+box["height"])
             sign_type = self.category_dict[box["category"]]["name"]
 
             cv2.rectangle(cv_image, start_point, end_point, (0,0,255),2)
@@ -76,12 +76,7 @@ class yolo_detector:
             self.img_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))  
         except CvBridgeError as e:
             print(e)
-        
-         
-        # orb = cv2.ORB_create()
-        # bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-        # kp1, res1 = orb.detectAndCompute(cv_image, None)
-        
+
 
 
     def publish_pose(self, data, bbs):
@@ -96,7 +91,7 @@ class yolo_detector:
                 t.header.stamp = data.header.stamp
                 t.header.frame_id = "cf1/camera_link"
 
-                t.type = self.CATEGORY_DICT[box["category"]]["name"]  # wait to modify later..........
+                t.type = CATEGORY_DICT[box["category"]]["name"]
                 box_x = int(box["x"])
                 box_y = int(box["y"])
                 box_height = int(box["height"])
@@ -179,8 +174,8 @@ class yolo_detector:
             out = self.model(image)
             bbs = self.model.decode_output(out, self.threshold)
         self.publish_bounding_image(img,bbs)
-        #sign_list = self.publish_pose(data, bbs)
-        #self.publish_trans(sign_list)
+        sign_list = self.publish_pose(data, bbs)
+        self.publish_trans(sign_list)
         return None
 
 
@@ -189,7 +184,7 @@ def main(args):
     rospy.loginfo("Yolo Detector Staring Working")
 
     # initialize detector
-    file = 'trained_model/det_2021-03-07_13-39-01-343362.pt'
+    file = 'trained_model/det_2021-04-05_13-22-23-816033.pt'
     device = 'cpu'
     detector = yolo_detector(file,device)
 

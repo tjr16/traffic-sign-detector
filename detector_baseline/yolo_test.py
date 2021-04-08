@@ -36,7 +36,7 @@ class Yolo_detector:
                 
                 start_point = (box["x"], box["y"])
                 text_point = (box["x"], box["y"] - 5)
-                end_point = (box["x"] + box["height"], box["y"]+box["width"])
+                end_point = (box["x"] + box["width"], box["y"]+box["height"])
                 sign_type = self.category_dict[box["category"]]["name"]
 
                 cv_image = cv2.rectangle(img.copy(), start_point, end_point, (0,0,255),1)
@@ -74,13 +74,12 @@ detector = Yolo_detector(file,device)
 
 # uncomment when testing locally
 dir = os.path.dirname(__file__)
-img_path = os.path.join(dir,'test_images/img_4.jpg')
+img_path = os.path.join(dir,'test_images/a_002.jpg')
 img = cv2.imread(img_path)
 
 def main():
     detector.feedback(img)
 
 if __name__ == "__main__":
-
     main()
     
