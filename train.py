@@ -33,8 +33,8 @@ def train(max_iter, device="cpu"):
     wandb.watch(detector)
 
     dataset = CocoDetection(
-        root="./dd2419_coco/training",
-        annFile="./dd2419_coco/annotations/training.json",
+        root=ROOT,
+        annFile=ANNFILE,
         transforms=detector.input_transform,
     )
 

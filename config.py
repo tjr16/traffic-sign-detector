@@ -2,6 +2,10 @@
 Define some parameters in this script.
 """
 
+# dataset path
+ROOT = "./dd2419_coco/training_all_aug_images"
+ANNFILE = "./dd2419_coco/annotations/training_all_aug.json"
+
 # parameters of data set
 NUM_CATEGORIES = 15
 IMG_W = 640
