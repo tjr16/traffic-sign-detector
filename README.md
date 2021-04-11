@@ -10,7 +10,7 @@ import cv2
 cv2.__version__
 quit()
 ```
-My version of cv2 is 3.4.2.
+My version of cv2 is 3.4.2. If your version is not suitable, please first uninstall opencv and then run:
 ```
 pip2 install opencv-python==3.4.2.16
 pip2 install opencv-contrib-python==3.4.2.16
