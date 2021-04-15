@@ -61,20 +61,25 @@ class Yolo_detector:
                 out = self.model(image)
                 bbs = self.model.decode_output(out, self.threshold)
         self.publish_pose(img,bbs)
-        fet_detector = Feature_detector(img,bbs)
-        fet_detector.main()
+        fet_detector = Feature_detector(img,bbs,exp=30)
+        q_list, t_list = fet_detector.pose_estimation()
+
+        for i in range(len(q_list)):
+            print(q_list[i])
+            print(t_list[i])
+
         return None
 
 
 # relative path of training result
-file = 'trained_model/det_2021-03-07_13-39-01-343362.pt'
+file = 'trained_model/det_2021-04-11_13-56-50-15class.pt'
 
 device = 'cpu'
 detector = Yolo_detector(file,device)
 
 # uncomment when testing locally
 dir = os.path.dirname(__file__)
-img_path = os.path.join(dir,'test_images/a_002.jpg')
+img_path = os.path.join(dir,'test_images/b_001.jpg')
 img = cv2.imread(img_path)
 
 def main():

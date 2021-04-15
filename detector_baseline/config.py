@@ -29,6 +29,6 @@ WEIGHT_CLASS = 20
 # parameters of network training
 BATCH_SIZE = 8
 CONF_THRESHOLD = 0.9    # threshold of confidence
-IOU_THRESHOLD = 0.2  # threshold of IOU for NMS
+IOU_THRESHOLD = 0.1  # threshold of IOU for NMS
 OUTPUT_FUNC = 'sigmoid'
 LEARNING_RATE = 1e-4

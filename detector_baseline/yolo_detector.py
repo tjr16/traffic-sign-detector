@@ -12,6 +12,7 @@ import matplotlib as plt
 from torchvision import transforms
 from cv_bridge import CvBridge, CvBridgeError
 from detector import Detector
+from feature_detector import Feature_detector
 import utils
 import torch
 
@@ -22,6 +23,8 @@ import sys
 
 import time
 
+PUB_POSE = True
+EXP = 20 
 
 class yolo_detector:
 
@@ -55,22 +58,18 @@ class yolo_detector:
     def publish_bounding_image(self, img, bbs):
 
         cv_image = img
-        ROI_list = []
-        
-        for box in bbs[0]:
-            # add bounding box
-            start_point = (box["x"], box["y"])
-            text_point = (box["x"], box["y"] - 5)
-            end_point = (box["x"] + box["width"], box["y"]+box["height"])
-            sign_type = self.category_dict[box["category"]]["name"]
-
-            cv2.rectangle(cv_image, start_point, end_point, (0,0,255),2)
-            cv2.putText(img,sign_type,text_point, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-
-            # extract box
-            ROI = img[int(start_point[0]):int(end_point[0]),int(start_point[1]):int(end_point[1])]
-            ROI_list.append(ROI)
-        
+        if bbs[0]:
+            for box in bbs[0]:
+                # add bounding box
+                start_point = (box["x"], box["y"])
+                text_point = (box["x"], box["y"] - 5)
+                end_point = (box["x"] + box["width"], box["y"]+box["height"])
+                sign_type = self.category_dict[box["category"]]["name"]
+                cv2.rectangle(cv_image, start_point, end_point, (0,255,0),2)
+                start_point = (box["x"]-EXP, box["y"]-EXP)
+                end_point = (box["x"] + box["width"]+EXP, box["y"]+box["height"]+EXP)
+                cv2.rectangle(cv_image, start_point, end_point, (0,0,255),2)
+                cv2.putText(img,sign_type,text_point, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
         try:
             # Publish image
             self.img_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))  
@@ -79,53 +78,38 @@ class yolo_detector:
 
 
 
-    def publish_pose(self, data, bbs):
+    def publish_pose(self, img, bbs, q, tr):
 
         list_sign = SignArray()
-        list_sign.header.stamp = data.header.stamp
+        list_sign.header.stamp = img.header.stamp
         list_sign.header.frame_id = "cf1/camera_link"
+        idx = 0
+        for box in bbs[0]:
+            t = Sign()
+            t.header.stamp = img.header.stamp
+            t.header.frame_id = "cf1/camera_link"
+            t.type = CATEGORY_DICT[box["category"]]["name"]
+            t.confidence = float(box["confidence"])
 
-        if bbs[0]: # check if empty
-            for box in bbs[0]:
-                t = Sign()
-                t.header.stamp = data.header.stamp
-                t.header.frame_id = "cf1/camera_link"
+            if q and q[idx] is not None:
+                    t.pose.pose.position.x = tr[idx][0]
+                    t.pose.pose.position.y = tr[idx][1]
+                    t.pose.pose.position.z = tr[idx][2]    
+                    (t.pose.pose.orientation.x,
+                    t.pose.pose.orientation.y,
+                    t.pose.pose.orientation.z,
+                    t.pose.pose.orientation.w) = (q[idx][0],q[idx][1],q[idx][2],q[idx][3])
 
-                t.type = CATEGORY_DICT[box["category"]]["name"]
-                box_x = int(box["x"])
-                box_y = int(box["y"])
-                box_height = int(box["height"])
-                box_width = int(box["width"])
-                dx = 320
-                dy = 240
-                # get 3D pose XYZ from bounding box
-                x = box_x + 0.5 * box_width   # centering x
-                y = box_y + 0.5 * box_height  # centering y
-                T_x = 0.2  # baseline
-                f = 245  # focal length, wait to check later.........
-                Z = f * T_x / box_width  # width -> disparity
-                X = (x - dx) / f * Z
-                Y = (y-  dy)/ f * Z
-                
-                t.pose.pose.position.x = X
-                t.pose.pose.position.y = Y
-                t.pose.pose.position.z = Z
-                # 3D orientation wait to modify later..............
-                (t.pose.pose.orientation.x,
-                t.pose.pose.orientation.y,
-                t.pose.pose.orientation.z,
-                t.pose.pose.orientation.w) = quaternion_from_euler(math.radians(0),
-                                                                math.radians(0),
-                                                                math.radians(0))
-                
-                list_sign.signs.append(t)
-        
+                    list_sign.signs.append(t) 
+                    
+            idx += 1
+
         self.pose_pub.publish(list_sign)
 
         return list_sign
     
 
-    def publish_trans(self,sign_list):
+    def publish_trans(self, sign_list):
         sign_tflist = []
         if sign_list.signs:
             for sign in sign_list.signs:
@@ -158,7 +142,7 @@ class yolo_detector:
         Feedback function for Image topic
         Going through Training Model/Feature detector
         """
-
+        
         try:
             img = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
@@ -173,10 +157,16 @@ class yolo_detector:
             s_t = time.time()
             out = self.model(image)
             bbs = self.model.decode_output(out, self.threshold)
+        
+        # publish image
         self.publish_bounding_image(img,bbs)
-        sign_list = self.publish_pose(data, bbs)
-        self.publish_trans(sign_list)
-        return None
+
+        if bbs[0] and PUB_POSE:  # if any detection
+            fet_detector = Feature_detector(img,bbs,EXP)
+            q, t = fet_detector.pose_estimation()
+            sign_list = self.publish_pose(data, bbs, q, t)
+            self.publish_trans(sign_list)
+
 
 
 def main(args):
@@ -184,7 +174,7 @@ def main(args):
     rospy.loginfo("Yolo Detector Staring Working")
 
     # initialize detector
-    file = 'trained_model/det_2021-04-05_13-22-23-816033.pt'
+    file = 'trained_model/det_2021-04-11_13-56-50-15class.pt'
     device = 'cpu'
     detector = yolo_detector(file,device)
 
