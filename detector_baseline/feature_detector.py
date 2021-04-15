@@ -88,7 +88,7 @@ class Feature_detector:
         height,width,channel = base_img.shape
         wp = []
         for point in pts:
-            new_point = [(point[1]-height/2)*ratio,(point[0]-width/2)*ratio,0]
+            new_point = [-(point[1]-height/2)*ratio, 0, (point[0]-width/2)*ratio]
             wp.append(new_point)
         wp = np.array(wp)
         return wp
