@@ -1,53 +1,33 @@
-# dd2419_detector_baseline
-Traffic signs detection based on a simple detector baseline for DD2419 course
+# OpenCV INSTALL
+Because SIRF and SURF are no longer available in opencv > 3.4.2.16, so a proper version should be download or you can easily
+get an error running the code like this :  'module' object has no attribute 'xfeatures2d' 
 
-# Prerequisites
-
-- Ubuntu 18.04
-- ROS Melodic
-- OpenCV
+### check opencv version
+First open a terminal
+```
+python
+import cv2
+cv2.__version__
+quit()
+```
+My version of cv2 is 3.4.2. If your version is not suitable, please first uninstall opencv and then run:
+```
+pip2 install opencv-python==3.4.2.16
+pip2 install opencv-contrib-python==3.4.2.16
+```
+💫One nonnegligible point is python2 and python3 can have different opencv version.
+It means if you run "pip install", the package may be installed to python3 while our code is based on python2.
+Don't forget this.
 
 # Installing
-### Install ros package
+After the basic installation on "detection" branch is done, 
 ```
-$ catkin_create_pkg perception rospy geometry_msgs tf2_ros tf std_msgs crazyflie_driver
-$ source ../devel/setup.$(basename $SHELL)
-$ mkdir perception
-$ git clone -b detection https://github.com/tjr16/dd2419_detector_baseline.git
-```
-Extract all the files from `dd2419_detector_baseline` to `perception` and then build 
-```
-$ catkin build
+$ git clone -b 6D-percept https://github.com/tjr16/dd2419_detector_baseline.git
 ```
 
-### Install opencv <for feature detection, not implemented yet>
-```
-$ To be filled
-```
 # Running
-### Increase functionality of CPU
-You can type the following line to check current CPU Running frequency:
-```
-grep MHz /proc/cpuinfo
-```
-If it's largely below the standard frequency the product is said to be, probably check if you PC is on powersave mode:
-https://askubuntu.com/questions/929884/how-to-set-performance-instead-of-powersave-as-default
-```
-sudo systemctl restart cpufrequtils
-```
-Above line is just for convenience for me.
-### Get ros node started
+
+### Same as before
 ```
 $ rosrun perception yolo_detector.py
 ```
-
-### Check message information
-```
-$ rosmsg info perception/Sign
-$ rosmsg info perception/SignArray
-```
-### Check rostopic 
-```
-$ rostopic echo sign/detected
-```
-The echoing information should be of type SignArray which refers to an array of the signs it is detected currently, empty if no detection found
