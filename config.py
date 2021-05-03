@@ -3,8 +3,8 @@ Define some parameters in this script.
 """
 
 # dataset path
-ROOT = "./dd2419_coco/training_all_aug_images"
-ANNFILE = "./dd2419_coco/annotations/training_all_aug.json"
+ROOT = "./dd2419_coco/01456_all"
+ANNFILE = "./dd2419_coco/training_01456.json"
 
 # parameters of data set
 NUM_CATEGORIES = 15
@@ -36,10 +36,8 @@ WEIGHT_CLASS = 20
 
 # parameters of network training
 BATCH_SIZE = 8
-CONF_THRESHOLD = 0.5    # threshold of confidence
-IOU_THRESHOLD = 0.5  # threshold of IOU for NMS
-# when training ,use 0.5 and 0.5. respectively
-# when testing, use 0.75 and 0.1, respectively
+CONF_THRESHOLD = 0.85    # threshold of confidence
+IOU_THRESHOLD = 0.001  # threshold of IOU for NMS
 
 OUTPUT_FUNC = 'sigmoid'
 LEARNING_RATE = 1e-4

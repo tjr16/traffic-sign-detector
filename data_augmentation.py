@@ -28,11 +28,12 @@ from config import CATEGORY_DICT, IMG_W, IMG_H
 # check data set before augmentation!
 # IMAGE_ID_START = 1258  # beginning image_id of new images
 # ID_START = 1257  # beginning id of new annotations
-IMAGE_ID_START = 2008  # beginning image_id of new images
-ID_START = 2008  # beginning id of new annotations
+# 2008? 2286!
+IMAGE_ID_START = 2286  # beginning image_id of new images
+ID_START = 2286  # beginning id of new annotations
 
 # data augmentation config
-MIN_VIS = 0.9
+MIN_VIS = 0.99
 # DUP_TIMES = 20  # duplicate and transform how many times for each image
 DUP_TIMES = {
     0: 0,
@@ -78,8 +79,9 @@ BBOX_PARAM = A.BboxParams(
 # overwrite the original file or not
 OVERWRITE = False   # TODO: if testing, set this FALSE
 # set reading path
-ANN_PATH = "dd2419_coco/annotations/training_all_new.json"
-IMG_PATH = "dd2419_coco/training_all_images/"
+# ANN_PATH = "dd2419_coco/annotations/training_all_new.json"
+ANN_PATH = "jsons/training_all.json"
+IMG_PATH = "dd2419_coco/01456/"
 # get writing path
 if OVERWRITE:
     # original images and annotations will be overwritten
@@ -88,9 +90,14 @@ if OVERWRITE:
     NEW_IMG_PATH = IMG_PATH
 else:
     # new images and json file are generated in a new path
-    NEW_ANN_PATH = "dd2419_coco/annotations/training_all_new_aug.json"
+    # NEW_ANN_PATH = "dd2419_coco/annotations/training_all_new_aug.json"
+    NEW_ANN_PATH = "jsons/training_all_aug.json"
+    # NEW_IMG_PATH = (
+    #     "dd2419_coco/training_all_images_new/"
+    #     # save in a new folder and will merge later
+    # )
     NEW_IMG_PATH = (
-        "dd2419_coco/training_all_images_new/"
+        "dd2419_coco/01456_new/"
         # save in a new folder and will merge later
     )
 
@@ -122,7 +129,7 @@ class AllTransform(Strategy):
             A.HorizontalFlip(p=0.2),
             A.VerticalFlip(p=0.2),
             A.RandomBrightnessContrast(p=0.2),
-            Rotate(limit=(-7, 7), p=0.2),
+            Rotate(limit=(-4, 4), p=0.2),
             A.Blur(p=0.2),
             A.ColorJitter(p=0.2),
             A.GaussNoise(p=0.2),
@@ -146,7 +153,7 @@ class NoFlip(Strategy):
         self.__transforms = [
             A.RandomSizedBBoxSafeCrop(width=IMG_W, height=IMG_H, p=0.5),
             A.RandomBrightnessContrast(p=0.2),
-            Rotate(limit=(-7, 7), p=0.3),
+            Rotate(limit=(-4, 4), p=0.3),
             A.Blur(p=0.2),
             A.ColorJitter(p=0.3),
             A.GaussNoise(p=0.2),
@@ -174,6 +181,49 @@ def label2strategy(label):
         return AllTransform()
 
 
+def show_image_array(img, bboxes=None, labels=None):
+    """
+    Show image with the bounding box.
+    Args:
+        img: numpy.ndarray
+        bboxes: list of tuples
+        labels: list of int
+    """
+
+    # add bounding box or not
+    if bboxes is not None and labels is not None:
+        # single input case
+        if type(labels) is int:
+            labels = [labels]
+            bboxes = [bboxes]
+
+        # the length should match
+        assert len(bboxes) == len(labels)
+
+        for idx in range(len(bboxes)):
+            bbox = bboxes[idx]
+            lbl = labels[idx]
+            bbox = list(map(int, bbox))
+            start_point = (bbox[0], bbox[1])
+            text_point = (bbox[0], bbox[1] - 5)
+            end_point = (bbox[0] + bbox[2], bbox[1] + bbox[3])
+            cv2.rectangle(img, start_point, end_point, (0, 0, 255), 2)
+            cv2.putText(
+                img,
+                CATEGORY_DICT[lbl]["name"],
+                text_point,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
+
+    cv2.imshow("show image", img)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
     # There is a big problem that RAM is not enough for too many images.
     # set `DEBUG` to zero or negative to exit debug mode.
@@ -198,7 +248,8 @@ if __name__ == "__main__":
         if idx % 100 == 0:
             print('begin ann ', idx, '...')
 
-        image_name = data["images"][idx]["file_name"]
+        # image_name = data["images"][idx]["file_name"]
+        image_name = images[annotations[idx]["image_id"]]["file_name"]
         img_path = IMG_PATH + image_name
         image = cv2.imread(img_path)
         bbox = annotations[idx]["bbox"]
@@ -208,13 +259,29 @@ if __name__ == "__main__":
             strategy = label2strategy(label)
             transform = strategy.get_transform()
 
+            # show_image_array(
+            #     image.copy(), bbox, label
+            # )
+            #
+            # # ............debug
+            # input("Press Enter to continue...")
+            # # ............
+
             # use pipeline to transform
-            transformed = transform(
-                image=image, bboxes=[bbox], class_labels=[label]
-            )
+            try:
+                transformed = transform(
+                    image=image, bboxes=[bbox], class_labels=[label]
+                )
+            except:
+                continue
+
             image_transformed = transformed["image"]  # ndarray, (W, H, C=3)
             bbox_transformed = transformed["bboxes"]
             label_transformed = transformed["class_labels"]
+
+            # show_image_array(
+            #     image_transformed.copy(), bbox_transformed, label_transformed
+            # )
 
             # check if bounding box exists
             if label_transformed:
@@ -235,6 +302,8 @@ if __name__ == "__main__":
                     })
 
                 new_image_id, new_id = new_image_id + 1, new_id + 1
+
+        # --- loop end --
 
     # update json
     new_data = dict()

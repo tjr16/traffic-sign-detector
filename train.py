@@ -16,6 +16,7 @@ import wandb
 import utils
 from detector import Detector
 from config import *
+from copy import deepcopy
 
 
 def train(max_iter, device="cpu"):
@@ -38,7 +39,15 @@ def train(max_iter, device="cpu"):
         transforms=detector.input_transform,
     )
 
+    # TODO: hardcode here
+    dataset, valid_dataset=torch.utils.data.random_split(dataset, [3500, len(dataset)-3500])
+
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=len(valid_dataset), shuffle=True)
+
+    # get validation set
+    for a, b in valid_loader:
+        img_valid, target_valid = a.to(device), b.to(device)
 
     # training params
     max_iterations = wandb.config.max_iterations = max_iter
@@ -195,9 +204,9 @@ def train(max_iter, device="cpu"):
                     # train_images: torch.Size([5, 3, 480, 640])
                     # out: torch.Size([batch_size, channels, 15, 20])
                     out = detector(train_images).cpu()  # training
-                    bbs = detector.decode_output(out, CONF_THRESHOLD)
+                    bbs = detector.decode_output(out)
                     out_test = detector(test_images).cpu()  # test
-                    bbs_test = detector.decode_output(out_test, CONF_THRESHOLD)
+                    bbs_test = detector.decode_output(out_test)
                     # attr of bbs: width, height, x, y, category
 
                     for i, image in enumerate(train_images):
@@ -241,18 +250,78 @@ def train(max_iter, device="cpu"):
                         plt.close()
                     detector.train()
 
+            if not (current_iteration % 20):
+                with torch.no_grad():
+                    detector.eval()
+
+                    out = detector(img_valid)
+                    pos_indices = torch.nonzero(target_valid[:, 4, :, :] == 1, as_tuple=True)
+                    neg_indices = torch.nonzero(target_valid[:, 4, :, :] == 0, as_tuple=True)
+
+                    reg_mse = nn.functional.mse_loss(
+                        out[
+                        pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                        ],  # torch.Size([8, 4])
+                        # each [4]: out[xx[0][0], 0:4, xx[1][0], xx[2][0]
+                        target_valid[
+                        pos_indices[0], 0:4, pos_indices[1], pos_indices[2]
+                        ],  # torch.Size([8, 4])
+                    )
+
+                    # confidence err where box exists
+                    pos_mse = nn.functional.mse_loss(
+                        out[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
+                        target_valid[pos_indices[0], 4, pos_indices[1], pos_indices[2]],
+                    )
+                    # confidence err where box not exists
+                    # TODO: replace MSE with crossentropy, add a param in config.py
+                    neg_mse = nn.functional.mse_loss(
+                        out[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
+                        target_valid[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
+                    )
+
+                    # class err
+                    out_cls = out[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+                    label_cls = target_valid[pos_indices[0], 5:, pos_indices[1], pos_indices[2]]
+
+                    if OUTPUT_FUNC == 'softmax':
+                        # y_tensor = torch.tensor(label_cls, dtype=torch.long, device=device)
+                        cls_mse = nn.functional.cross_entropy(out_cls, torch.max(label_cls, 1)[1])
+                    else:
+                        cls_mse = nn.functional.mse_loss(out_cls, label_cls)
+
+                    loss = (
+                            pos_mse
+                            + weight_reg * reg_mse
+                            + weight_noobj * neg_mse
+                            + weight_cls * cls_mse
+                    )
+
+                    wandb.log(
+                        {
+                            "total loss _valid": loss.item(),
+                            "loss pos _valid": pos_mse.item(),
+                            "loss neg _valid": neg_mse.item(),
+                            "loss reg _valid": reg_mse.item(),
+                            "loss cls _valid": cls_mse.item(),
+                        },
+                        step=current_iteration,
+                    )
+
+                    detector.train()
+
             current_iteration += 1
             if current_iteration > max_iterations:
                 break
 
-        training_acc = train_cls_correct/train_cls_all
-        # TODO
-        wandb.log(
-            {
-                "training acc": training_acc
-            },
-            step=current_iteration,
-        )
+        # training_acc = train_cls_correct/train_cls_all
+        # # TODO
+        # wandb.log(
+        #     {
+        #         "training acc": training_acc
+        #     },
+        #     step=current_iteration,
+        # )
         # if current_iteration % 200 == 0:
         #     print("training_acc: %f" % training_acc)
 
@@ -260,6 +329,7 @@ def train(max_iter, device="cpu"):
 
     model_path = "{}.pt".format(run_name)
     utils.save_model(detector, model_path)
+    print("save model:", model_path)
 
     if device == "cpu":
         wandb.save(model_path)

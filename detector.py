@@ -8,7 +8,7 @@ import torch.nn as nn
 from torchvision import models
 from torchvision import transforms
 from torchvision import ops
-from config import IOU_THRESHOLD, OUTPUT_FUNC
+from config import *
 
 
 class Detector(nn.Module):
@@ -91,7 +91,7 @@ class Detector(nn.Module):
         ymax = yc + height / 2.0
         return torch.Tensor([xmin, ymin, xmax, ymax]).reshape(1, -1)
 
-    def decode_output(self, out, threshold):
+    def decode_output(self, out, threshold=CONF_THRESHOLD, iou_threshold=IOU_THRESHOLD):
         """Convert output to list of bounding boxes.
 
         Args:
@@ -136,7 +136,7 @@ class Detector(nn.Module):
 
             # Non Maximum Suppression
             # return: the indices, torch.Size([n])
-            reserved_indices = ops.nms(all_boxes, all_score, IOU_THRESHOLD)
+            reserved_indices = ops.nms(all_boxes, all_score, iou_threshold)
             bb_indices_new = bb_indices[reserved_indices, :]
 
             # loop over all cells with bounding box center

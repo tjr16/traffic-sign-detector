@@ -2,6 +2,10 @@ import cv2
 from config import CATEGORY_DICT
 import json
 
+"""
+Use this script to test data integration and data augmentation work well.
+"""
+
 
 def show_image_array(img, bboxes=None, labels=None):
     """
@@ -46,15 +50,25 @@ def show_image_array(img, bboxes=None, labels=None):
     cv2.destroyAllWindows()
 
 
+# IMG_PATH = "C:\\Users\\Jerry TAN\\Downloads\\Integrate_data_collection\\training_images\\01456\\"
+# ANN_PATH = "./jsons/training_all.json"
+
+IMG_PATH = "./dd2419_coco/01456_all/"
+ANN_PATH = "./jsons/training_all_aug.json"
+
+# IMG_PATH = "./dd2419_coco/01456/"
+# ANN_PATH = "./jsons/training_all.json"
+
 if __name__ == "__main__":
-    with open("./jsons/training_all.json") as json_file:
+    with open(ANN_PATH) as json_file:
         data = json.load(json_file)
         images = data["images"]
         annotations = data["annotations"]
+    #     bboxs = list(map(lambda x: x["bbox"], annotations))
 
     for i in range(1, 10000, 110):
         ann_id = i
-        IMG_PATH = "C:\\Users\\Jerry TAN\\Downloads\\Integrate_data_collection\\training_images\\01456\\"
+
         try:
             img_id = annotations[ann_id]["image_id"]
         except:
@@ -62,6 +76,7 @@ if __name__ == "__main__":
             break
 
         img_path = IMG_PATH + images[img_id]["file_name"]
+        print(img_path)
         image = cv2.imread(img_path)
         bbox = annotations[ann_id]["bbox"]
         label = annotations[ann_id]["category_id"]
